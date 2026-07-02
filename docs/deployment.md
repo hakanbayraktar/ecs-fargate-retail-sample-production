@@ -100,6 +100,13 @@ Required secret per environment:
 
 - `AWS_DEPLOY_ROLE_ARN`
 
+Optional repository-level CI variables:
+
+- `CI_MAX_CRITICAL_FINDINGS`
+- `CI_MAX_HIGH_FINDINGS`
+- `TRIVY_SEVERITIES`
+- `TRIVY_IGNORE_UNFIXED`
+
 ## Deployment sequence
 
 - run `terraform-plan.yml` manually for `dev`, `stage`, or `prod`
@@ -127,6 +134,8 @@ Recommended promotion pattern:
 
 Release quality controls:
 
+- `ci.yml` builds each selected service image and fails on Trivy threshold breaches
+- Trivy SARIF output is uploaded to GitHub code scanning for review
 - deploy summaries include resolved ECR image digest
 - Terraform can create a scoped GitHub OIDC deploy role per environment
 - `scripts/check-ecr-scan.sh` enforces vulnerability thresholds before ECS rollout

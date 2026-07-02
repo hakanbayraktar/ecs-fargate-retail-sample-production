@@ -139,3 +139,12 @@
 - Useful commands: `gh run view`, `aws sts get-caller-identity`.
 - Fix: correct role trust, verify inputs, and re-run with the same Git SHA.
 - Production note: keep environment variables documented and versioned.
+
+## CI image security gate failed
+
+- Symptom: `ci.yml` fails during Trivy policy enforcement.
+- Possible causes: new `HIGH` or `CRITICAL` image findings, overly strict repository thresholds, base image regression.
+- Where to check: workflow artifacts, uploaded SARIF results, and the `Enforce Trivy policy gate` step output.
+- Useful commands: `gh run view`, local `trivy image`, `jq`.
+- Fix: remediate the vulnerable dependency, update the upstream base image, or consciously adjust `CI_MAX_CRITICAL_FINDINGS` / `CI_MAX_HIGH_FINDINGS`.
+- Production note: treat threshold changes as change-controlled security exceptions.

@@ -132,6 +132,7 @@ For stateful dependencies:
 Repository expectations:
 
 - immutable image tagging using Git SHA
+- Trivy CI scan with policy thresholds and SARIF upload
 - no `latest` tag in deploy workflows
 - ECR scan on push enabled
 - deployment gate checks image scan findings before rollout
@@ -139,7 +140,6 @@ Repository expectations:
 
 Recommended next additions:
 
-- Trivy in CI
 - Inspector integration
 - signed image / provenance strategy if organizationally required
 

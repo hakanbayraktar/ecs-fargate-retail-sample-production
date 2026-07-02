@@ -152,6 +152,7 @@ Supporting docs:
 ├── scripts/
 │   ├── smoke-test.sh
 │   ├── check-ecr-scan.sh
+│   ├── check-trivy-report.sh
 │   ├── preflight-prod-cutover.sh
 │   ├── rollback-service.sh
 │   ├── list-ecs-events.sh
@@ -361,6 +362,13 @@ Optional quality-control variables:
 - `IMAGE_SCAN_RETRIES`
 - `IMAGE_SCAN_DELAY_SECONDS`
 
+Optional repository-level CI variables:
+
+- `CI_MAX_CRITICAL_FINDINGS`
+- `CI_MAX_HIGH_FINDINGS`
+- `TRIVY_SEVERITIES`
+- `TRIVY_IGNORE_UNFIXED`
+
 Suggested mapping source:
 
 - ECS cluster name: `terraform output ecs_cluster_name`
@@ -376,7 +384,7 @@ Workflow inventory:
 
 | Workflow | Purpose |
 | --- | --- |
-| `.github/workflows/ci.yml` | Builds selected upstream service images and validates shared-root Terraform |
+| `.github/workflows/ci.yml` | Validates shared-root Terraform, builds selected upstream service images, and enforces Trivy policy gates with SARIF output |
 | `.github/workflows/terraform-plan.yml` | Always validates Terraform, and on manual runs creates an environment-specific plan for `dev`, `stage`, or `prod` |
 | `.github/workflows/deploy-ui.yml` | Auto-deploys UI to `dev` on `main`, and manually promotes UI to `stage` or `prod` through GitHub Environments |
 | `.github/workflows/deploy-services.yml` | Manually deploys one backend service at a time to `dev`, `stage`, or `prod` with the same rolling deploy safety model |
@@ -396,6 +404,7 @@ This repository intentionally does not default to blue/green or canary. The base
 Additional release controls:
 
 - scoped GitHub OIDC deploy role per environment
+- Trivy CI gate before promotion workflows run
 - image vulnerability gate before ECS rollout
 - explicit prod confirmation and change reference input
 - immutable promotion by image tag and digest
@@ -442,6 +451,7 @@ Available helper script:
 
 - [scripts/smoke-test.sh](/Users/hakan/ecs-retail/scripts/smoke-test.sh:1)
 - [scripts/check-ecr-scan.sh](/Users/hakan/ecs-retail/scripts/check-ecr-scan.sh:1)
+- [scripts/check-trivy-report.sh](/Users/hakan/ecs-retail/scripts/check-trivy-report.sh:1)
 - [scripts/preflight-prod-cutover.sh](/Users/hakan/ecs-retail/scripts/preflight-prod-cutover.sh:1)
 - [scripts/list-ecs-events.sh](/Users/hakan/ecs-retail/scripts/list-ecs-events.sh:1)
 - [scripts/rollback-service.sh](/Users/hakan/ecs-retail/scripts/rollback-service.sh:1)
@@ -454,6 +464,7 @@ Current smoke test expectation:
 - retries before failing
 - can optionally verify backend healthcheck URLs when provided
 - can optionally validate expected response substrings per endpoint
+- CI now gates container images with Trivy before merge or `main` continuation
 - release workflows also gate on ECR image scan findings
 
 Operational docs:
@@ -478,6 +489,7 @@ Current security baseline:
 - least privilege task role separation
 - no public backend exposure
 - immutable image tags
+- Trivy CI gate with SARIF upload
 - ECR scan on push
 - optional WAF
 - optional VPC endpoints
@@ -485,8 +497,6 @@ Current security baseline:
 
 Remaining hardening candidates:
 
-- HTTPS enforcement with ACM in every public environment
-- WAF enablement by default in prod
 - GuardDuty / Security Hub / Inspector integration
 
 ## Cost considerations

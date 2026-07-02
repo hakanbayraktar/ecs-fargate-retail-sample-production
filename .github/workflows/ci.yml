@@ -6,6 +6,10 @@ on:
     branches:
       - main
 
+permissions:
+  contents: read
+  security-events: write
+
 jobs:
   terraform:
     runs-on: ubuntu-latest
@@ -22,7 +26,7 @@ jobs:
         working-directory: terraform
         run: terraform validate
 
-  build-selected-services:
+  image-security:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -31,7 +35,90 @@ jobs:
           - catalog
           - cart
           - checkout
+          - orders
+    env:
+      CI_MAX_CRITICAL_FINDINGS: ${{ vars.CI_MAX_CRITICAL_FINDINGS }}
+      CI_MAX_HIGH_FINDINGS: ${{ vars.CI_MAX_HIGH_FINDINGS }}
+      TRIVY_SEVERITIES: ${{ vars.TRIVY_SEVERITIES }}
+      TRIVY_IGNORE_UNFIXED: ${{ vars.TRIVY_IGNORE_UNFIXED }}
+      TRIVY_CACHE_DIR: ${{ github.workspace }}/.trivy-cache
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.TRIVY_CACHE_DIR }}
+          key: trivy-db-${{ runner.os }}-${{ github.ref_name }}
+          restore-keys: |
+            trivy-db-${{ runner.os }}-
+      - uses: aquasecurity/setup-trivy@v0.2.2
+      - name: Resolve CI security policy
+        run: |
+          if [[ -z "${CI_MAX_CRITICAL_FINDINGS:-}" ]]; then
+            echo "CI_MAX_CRITICAL_FINDINGS=0" >> "$GITHUB_ENV"
+          fi
+
+          if [[ -z "${CI_MAX_HIGH_FINDINGS:-}" ]]; then
+            echo "CI_MAX_HIGH_FINDINGS=0" >> "$GITHUB_ENV"
+          fi
+
+          if [[ -z "${TRIVY_SEVERITIES:-}" ]]; then
+            echo "TRIVY_SEVERITIES=CRITICAL,HIGH" >> "$GITHUB_ENV"
+          fi
+
+          if [[ -z "${TRIVY_IGNORE_UNFIXED:-}" ]]; then
+            echo "TRIVY_IGNORE_UNFIXED=false" >> "$GITHUB_ENV"
+          fi
       - name: Build upstream service image
-        run: docker build -t retail-${{ matrix.service }}:${{ github.sha }} app/upstream/retail-store-sample-app/src/${{ matrix.service }}
+        run: |
+          echo "IMAGE_REF=retail-${{ matrix.service }}:${{ github.sha }}" >> "$GITHUB_ENV"
+          docker build \
+            -t "retail-${{ matrix.service }}:${{ github.sha }}" \
+            "app/upstream/retail-store-sample-app/src/${{ matrix.service }}"
+      - name: Generate Trivy JSON report
+        run: |
+          ignore_unfixed_args=()
+
+          if [[ "${TRIVY_IGNORE_UNFIXED}" == "true" ]]; then
+            ignore_unfixed_args+=(--ignore-unfixed)
+          fi
+
+          trivy image \
+            --cache-dir "$TRIVY_CACHE_DIR" \
+            --severity "$TRIVY_SEVERITIES" \
+            --format json \
+            --output "trivy-${{ matrix.service }}.json" \
+            "${ignore_unfixed_args[@]}" \
+            "$IMAGE_REF"
+      - name: Enforce Trivy policy gate
+        run: |
+          bash scripts/check-trivy-report.sh "trivy-${{ matrix.service }}.json"
+      - name: Generate Trivy SARIF report
+        if: always()
+        run: |
+          ignore_unfixed_args=()
+
+          if [[ "${TRIVY_IGNORE_UNFIXED}" == "true" ]]; then
+            ignore_unfixed_args+=(--ignore-unfixed)
+          fi
+
+          trivy image \
+            --cache-dir "$TRIVY_CACHE_DIR" \
+            --severity "$TRIVY_SEVERITIES" \
+            --format sarif \
+            --output "trivy-${{ matrix.service }}.sarif" \
+            "${ignore_unfixed_args[@]}" \
+            "$IMAGE_REF"
+      - name: Upload Trivy SARIF
+        if: always() && (github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork != true)
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-${{ matrix.service }}.sarif
+          category: trivy-${{ matrix.service }}
+      - name: Upload Trivy artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: trivy-${{ matrix.service }}-reports
+          path: |
+            trivy-${{ matrix.service }}.json
+            trivy-${{ matrix.service }}.sarif

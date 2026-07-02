@@ -94,6 +94,7 @@ Current delivery status:
 - Phase 3 complete
 - Phase 4 complete
 - Phase 6 complete
+- Phase 7 complete
 - Next phase items identified beyond the current delivery baseline
 
 ### Phase 1
@@ -140,7 +141,6 @@ Security and release guardrails:
 
 Recommended follow-up work:
 
-- add image scanning and policy gates to CI if stricter release control is needed
 - evaluate GuardDuty, Security Hub, and Inspector-based continuous findings
 
 ### Phase 6
@@ -150,6 +150,14 @@ HTTPS and DNS production cutover:
 - prod Terraform validation requires ACM, Route53, and WAF inputs
 - ALB publishes dualstack alias records for custom domains
 - prod cutover preflight script validates placeholders before planning
+
+### Phase 7
+
+CI image security policy:
+
+- `ci.yml` builds and scans selected service images with Trivy
+- CI thresholds are enforced before merge or `main` continuation
+- SARIF results are published for GitHub code scanning visibility
 
 ## Principles
 
