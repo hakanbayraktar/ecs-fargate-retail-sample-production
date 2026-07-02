@@ -93,7 +93,8 @@ Current delivery status:
 - Phase 2 complete
 - Phase 3 complete
 - Phase 4 complete
-- Next phase items identified
+- Phase 6 complete
+- Next phase items identified beyond the current delivery baseline
 
 ### Phase 1
 
@@ -139,9 +140,16 @@ Security and release guardrails:
 
 Recommended follow-up work:
 
-- add optional HTTPS and Route53 production cutover guidance
 - add image scanning and policy gates to CI if stricter release control is needed
 - evaluate GuardDuty, Security Hub, and Inspector-based continuous findings
+
+### Phase 6
+
+HTTPS and DNS production cutover:
+
+- prod Terraform validation requires ACM, Route53, and WAF inputs
+- ALB publishes dualstack alias records for custom domains
+- prod cutover preflight script validates placeholders before planning
 
 ## Principles
 

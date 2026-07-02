@@ -21,6 +21,23 @@ terraform plan -var-file=envs/dev/dev.tfvars
 terraform apply -var-file=envs/dev/dev.tfvars
 ```
 
+## Prod HTTPS and DNS cutover
+
+Required prod inputs:
+
+- real `certificate_arn`
+- real `route53_zone_id`
+- real `public_domain_name`
+- `enable_waf = true`
+
+Helper:
+
+```bash
+bash scripts/preflight-prod-cutover.sh
+```
+
+The `terraform-plan.yml` workflow also runs this check automatically before prod plans.
+
 ## GitHub Environments
 
 Create these GitHub Environments first:
@@ -115,6 +132,12 @@ Release quality controls:
 - `scripts/check-ecr-scan.sh` enforces vulnerability thresholds before ECS rollout
 - smoke tests retry before failing the rollout
 - backend checks can validate expected response substrings per service
+
+Prod cutover controls:
+
+- ALB runs dualstack and publishes both `A` and `AAAA` alias records when Route53 is configured
+- ALB DNS remains available as a fallback endpoint
+- prod Terraform validation requires HTTPS and WAF-ready inputs
 
 ## Zero-downtime deployment model
 

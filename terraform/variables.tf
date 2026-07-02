@@ -68,6 +68,11 @@ variable "enable_waf" {
   description = "Whether to associate an AWS WAF web ACL with the public ALB."
   type        = bool
   default     = false
+
+  validation {
+    condition     = var.environment != "prod" || var.enable_waf
+    error_message = "enable_waf must be true for prod."
+  }
 }
 
 variable "allowed_ingress_cidrs" {
@@ -80,18 +85,83 @@ variable "certificate_arn" {
   description = "Optional ACM certificate ARN for HTTPS."
   type        = string
   default     = null
+
+  validation {
+    condition = (
+      var.certificate_arn == null ||
+      (
+        trim(var.certificate_arn) != "" &&
+        var.certificate_arn != "CHANGE_ME"
+      )
+    )
+    error_message = "certificate_arn must be null or a real ACM certificate ARN."
+  }
+
+  validation {
+    condition = (
+      var.environment != "prod" ||
+      var.certificate_arn != null
+    )
+    error_message = "certificate_arn is required for prod."
+  }
 }
 
 variable "route53_zone_id" {
   description = "Optional public Route53 hosted zone ID for a friendly DNS record."
   type        = string
   default     = null
+
+  validation {
+    condition = (
+      (var.route53_zone_id == null && var.public_domain_name == null) ||
+      (var.route53_zone_id != null && var.public_domain_name != null)
+    )
+    error_message = "route53_zone_id and public_domain_name must both be set or both be null."
+  }
+
+  validation {
+    condition = (
+      var.route53_zone_id == null ||
+      (
+        trim(var.route53_zone_id) != "" &&
+        var.route53_zone_id != "CHANGE_ME"
+      )
+    )
+    error_message = "route53_zone_id must be null or a real Route53 hosted zone ID."
+  }
 }
 
 variable "public_domain_name" {
   description = "Optional DNS name to create for the ALB."
   type        = string
   default     = null
+
+  validation {
+    condition = (
+      var.public_domain_name == null ||
+      (
+        trim(var.public_domain_name) != "" &&
+        var.public_domain_name != "CHANGE_ME"
+      )
+    )
+    error_message = "public_domain_name must be null or a real DNS name."
+  }
+
+  validation {
+    condition = (
+      var.public_domain_name == null ||
+      var.certificate_arn != null
+    )
+    error_message = "certificate_arn is required when public_domain_name is set."
+  }
+
+  validation {
+    condition = (
+      var.environment != "prod" ||
+      var.public_domain_name != null
+    )
+    error_message = "public_domain_name is required for prod."
+  }
 }
 
 variable "enable_github_actions_deploy_role" {

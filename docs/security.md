@@ -157,6 +157,7 @@ Current encryption expectations:
 Production follow-up:
 
 - ensure ACM is used for public HTTPS
+- prefer Route53 alias records over exposing raw ALB DNS to end users
 - consider KMS customer-managed keys where stricter control is required
 
 ## Least privilege checklist
@@ -170,7 +171,5 @@ Production follow-up:
 
 ## Production hardening backlog
 
-- add WAF by default in prod
-- enforce HTTPS-only public entry
 - evaluate GuardDuty, Security Hub, and Inspector
 - add Config / CloudTrail governance if this becomes a real shared platform

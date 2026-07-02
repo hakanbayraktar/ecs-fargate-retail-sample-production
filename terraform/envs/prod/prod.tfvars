@@ -8,8 +8,8 @@ nat_gateway_mode                 = "per_az"
 enable_vpc_endpoints             = true
 enable_waf                       = true
 certificate_arn                  = "CHANGE_ME"
-route53_zone_id                  = null
-public_domain_name               = null
+route53_zone_id                  = "CHANGE_ME"
+public_domain_name               = "shop.example.com"
 enable_orders                    = true
 enable_service_discovery         = true
 enable_catalog_database          = true
@@ -62,4 +62,3 @@ service_memory = {
   checkout = 1024
   orders   = 1024
 }
-

@@ -152,6 +152,7 @@ Supporting docs:
 ├── scripts/
 │   ├── smoke-test.sh
 │   ├── check-ecr-scan.sh
+│   ├── preflight-prod-cutover.sh
 │   ├── rollback-service.sh
 │   ├── list-ecs-events.sh
 │   ├── cleanup.sh
@@ -202,9 +203,9 @@ Environment split:
 
 - `terraform/envs/dev/dev.tfvars`
 - `terraform/envs/stage/stage.tfvars`
+- `terraform/envs/prod/prod.tfvars`
 - `terraform/envs/dev/backend.hcl`
 - `terraform/envs/stage/backend.hcl`
-- `terraform/envs/prod/prod.tfvars`
 - `terraform/envs/prod/backend.hcl`
 
 Remote backend:
@@ -212,6 +213,14 @@ Remote backend:
 - backend type: `s3`
 - locking: `use_lockfile = true`
 - DynamoDB lock table: not used
+
+Prod public-entry guardrails:
+
+- `certificate_arn` is required
+- `public_domain_name` is required
+- `route53_zone_id` is required
+- `enable_waf` must stay `true`
+- `terraform-plan.yml` runs `scripts/preflight-prod-cutover.sh` before prod planning
 
 Bootstrap remote state first:
 
@@ -359,6 +368,7 @@ Suggested mapping source:
 - task definition families: `terraform output ecs_task_definition_families`
 - ECR repository URLs: `terraform output ecr_repository_urls`
 - ALB URL: `terraform output application_url`
+- custom domain: `terraform output custom_domain_name`
 
 ## GitHub Actions workflows
 
@@ -432,6 +442,7 @@ Available helper script:
 
 - [scripts/smoke-test.sh](/Users/hakan/ecs-retail/scripts/smoke-test.sh:1)
 - [scripts/check-ecr-scan.sh](/Users/hakan/ecs-retail/scripts/check-ecr-scan.sh:1)
+- [scripts/preflight-prod-cutover.sh](/Users/hakan/ecs-retail/scripts/preflight-prod-cutover.sh:1)
 - [scripts/list-ecs-events.sh](/Users/hakan/ecs-retail/scripts/list-ecs-events.sh:1)
 - [scripts/rollback-service.sh](/Users/hakan/ecs-retail/scripts/rollback-service.sh:1)
 - [scripts/cleanup.sh](/Users/hakan/ecs-retail/scripts/cleanup.sh:1)

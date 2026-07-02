@@ -54,6 +54,9 @@ jobs:
         with:
           role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
           aws-region: ${{ env.AWS_REGION }}
+      - name: Prod cutover preflight
+        if: env.TF_ENV == 'prod'
+        run: bash scripts/preflight-prod-cutover.sh
       - name: Terraform init
         working-directory: terraform
         run: terraform init -backend=false

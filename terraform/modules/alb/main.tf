@@ -2,6 +2,7 @@ resource "aws_lb" "this" {
   name               = substr(var.name, 0, 32)
   load_balancer_type = "application"
   internal           = false
+  ip_address_type    = "dualstack"
   subnets            = var.public_subnet_ids
   security_groups    = [var.alb_security_group_id]
 
@@ -76,6 +77,19 @@ resource "aws_route53_record" "this" {
   zone_id = var.route53_zone_id
   name    = var.public_domain_name
   type    = "A"
+
+  alias {
+    name                   = aws_lb.this.dns_name
+    zone_id                = aws_lb.this.zone_id
+    evaluate_target_health = true
+  }
+}
+
+resource "aws_route53_record" "ipv6" {
+  count   = var.route53_zone_id != null && var.public_domain_name != null ? 1 : 0
+  zone_id = var.route53_zone_id
+  name    = var.public_domain_name
+  type    = "AAAA"
 
   alias {
     name                   = aws_lb.this.dns_name

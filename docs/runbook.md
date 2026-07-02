@@ -10,6 +10,14 @@
 - set `confirm_production_release=prod-release` for every prod release
 - keep reviewer approval enabled on the `prod` environment
 
+## Prod cutover
+
+- run `bash scripts/preflight-prod-cutover.sh` before the first prod cutover
+- confirm ACM certificate is issued for the final public domain
+- confirm Route53 hosted zone ID and alias target are correct
+- confirm WAF remains enabled in prod
+- validate both HTTPS endpoint reachability and rollback path before changing public traffic
+
 ## Deployment failed
 
 - freeze further deploys for the affected service

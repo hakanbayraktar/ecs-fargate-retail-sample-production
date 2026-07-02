@@ -13,6 +13,16 @@ output "application_url" {
   value       = module.alb.url
 }
 
+output "https_enabled" {
+  description = "Whether HTTPS is enabled on the public ALB."
+  value       = module.alb.https_enabled
+}
+
+output "custom_domain_name" {
+  description = "Configured public custom domain name, if any."
+  value       = module.alb.custom_domain_name
+}
+
 output "ecs_cluster_name" {
   description = "ECS cluster name."
   value       = module.ecs_cluster.name
