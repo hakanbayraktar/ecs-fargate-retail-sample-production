@@ -1,0 +1,65 @@
+aws_region                       = "eu-central-1"
+environment                      = "prod"
+project_name                     = "ecs-retail"
+vpc_cidr                         = "10.10.0.0/16"
+public_subnet_cidrs              = ["10.10.1.0/24", "10.10.2.0/24"]
+private_subnet_cidrs             = ["10.10.11.0/24", "10.10.12.0/24"]
+nat_gateway_mode                 = "per_az"
+enable_vpc_endpoints             = true
+enable_waf                       = true
+certificate_arn                  = "CHANGE_ME"
+route53_zone_id                  = null
+public_domain_name               = null
+enable_orders                    = true
+enable_service_discovery         = true
+enable_catalog_database          = true
+enable_checkout_redis            = true
+enable_orders_database           = true
+catalog_search_enabled           = false
+enable_container_insights        = true
+log_retention_in_days            = 30
+ecr_image_retention_count        = 50
+database_multi_az                = true
+database_deletion_protection     = true
+backup_retention_period          = 14
+redis_multi_az_enabled           = true
+redis_automatic_failover_enabled = true
+catalog_db_instance_class        = "db.t4g.small"
+orders_db_instance_class         = "db.t4g.small"
+redis_node_type                  = "cache.t4g.small"
+service_desired_counts = {
+  ui       = 2
+  catalog  = 2
+  cart     = 2
+  checkout = 2
+  orders   = 2
+}
+service_min_capacity = {
+  ui       = 2
+  catalog  = 2
+  cart     = 2
+  checkout = 2
+  orders   = 2
+}
+service_max_capacity = {
+  ui       = 6
+  catalog  = 6
+  cart     = 6
+  checkout = 6
+  orders   = 6
+}
+service_cpu = {
+  ui       = 512
+  catalog  = 512
+  cart     = 512
+  checkout = 512
+  orders   = 512
+}
+service_memory = {
+  ui       = 1024
+  catalog  = 1024
+  cart     = 1024
+  checkout = 1024
+  orders   = 1024
+}
+
