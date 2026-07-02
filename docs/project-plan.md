@@ -74,6 +74,8 @@ Platform scope:
 - backend deploy workflow with the same rollout safety model
 - GitHub Environments based promotion model for `dev`, `stage`, and `prod`
 - immutable image-tag promotion flow for `stage` and `prod`
+- vulnerability gate on ECR image scan findings before release
+- explicit prod confirmation and change-reference guard
 
 ### Operations and Documentation
 
@@ -81,6 +83,7 @@ Platform scope:
 - added architecture, security, deployment, runbook, troubleshooting, and cost docs
 - added helper scripts for smoke test, rollback, ECS event inspection, and cleanup
 - strengthened smoke tests with retries and response validation controls
+- added scoped GitHub OIDC deploy role support in Terraform
 
 ## Delivery Phases
 
@@ -89,6 +92,7 @@ Current delivery status:
 - Phase 1 complete
 - Phase 2 complete
 - Phase 3 complete
+- Phase 4 complete
 - Next phase items identified
 
 ### Phase 1
@@ -112,14 +116,32 @@ Environment promotion and release control:
 - helper automation for syncing Terraform outputs into GitHub Environment variables
 - immutable promotion of previously built ECR image tags
 
+### Phase 3
+
+Release quality controls:
+
+- smoke test retries
+- backend-only smoke mode
+- expected response substring validation
+- image digest visibility in deployment summaries
+
+### Phase 4
+
+Security and release guardrails:
+
+- scoped GitHub OIDC deploy role per environment
+- environment-bound OIDC trust policy
+- vulnerability gate on ECR image scan findings
+- explicit prod confirmation input
+- mandatory prod change reference input
+
 ### Next Phase
 
 Recommended follow-up work:
 
-- tighten deploy-role IAM scope further
-- enable mandatory prod approval rules in GitHub Environments
 - add optional HTTPS and Route53 production cutover guidance
 - add image scanning and policy gates to CI if stricter release control is needed
+- evaluate GuardDuty, Security Hub, and Inspector-based continuous findings
 
 ## Principles
 

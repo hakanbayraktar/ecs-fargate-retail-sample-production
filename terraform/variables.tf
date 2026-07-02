@@ -94,6 +94,24 @@ variable "public_domain_name" {
   default     = null
 }
 
+variable "enable_github_actions_deploy_role" {
+  description = "Create a scoped GitHub Actions OIDC deploy role for this environment."
+  type        = bool
+  default     = true
+}
+
+variable "github_repository" {
+  description = "GitHub repository in owner/name format allowed to assume the deploy role."
+  type        = string
+  default     = "hakanbayraktar/ecs-fargate-retail-sample-production"
+}
+
+variable "github_oidc_provider_arn" {
+  description = "Optional GitHub OIDC provider ARN. Leave null to use the account-local token.actions.githubusercontent.com provider ARN."
+  type        = string
+  default     = null
+}
+
 variable "upstream_image_tag" {
   description = "Default upstream image tag for the retail sample public images."
   type        = string
@@ -315,4 +333,3 @@ variable "enable_cloudwatch_alarms" {
   type        = bool
   default     = true
 }
-

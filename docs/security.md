@@ -84,7 +84,7 @@ Deploy workflows use AWS OIDC, not static AWS keys.
 Required pattern:
 
 1. GitHub Actions requests an OIDC token
-2. AWS IAM trust policy validates repository and branch conditions
+2. AWS IAM trust policy validates repository and GitHub Environment conditions
 3. GitHub assumes the deploy role temporarily
 4. workflow performs ECR push and ECS deploy actions
 
@@ -98,6 +98,14 @@ Benefits:
 Minimum GitHub secret:
 
 - `AWS_DEPLOY_ROLE_ARN`
+
+Current implementation:
+
+- Terraform can create one scoped deploy role per environment
+- trust policy binds the role to `repo:<owner>/<repo>:environment:<env>`
+- deploy role can push only to the environment ECR repositories
+- deploy role can update only the environment ECS services
+- `iam:PassRole` is limited to the ECS execution role and service task roles
 
 ## Secrets management
 
@@ -126,6 +134,7 @@ Repository expectations:
 - immutable image tagging using Git SHA
 - no `latest` tag in deploy workflows
 - ECR scan on push enabled
+- deployment gate checks image scan findings before rollout
 - ECR lifecycle policy to reduce stale image sprawl
 
 Recommended next additions:
@@ -161,9 +170,7 @@ Production follow-up:
 
 ## Production hardening backlog
 
-- tighten deploy role resource scoping further
 - add WAF by default in prod
 - enforce HTTPS-only public entry
 - evaluate GuardDuty, Security Hub, and Inspector
 - add Config / CloudTrail governance if this becomes a real shared platform
-

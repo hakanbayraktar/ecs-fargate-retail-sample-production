@@ -360,3 +360,24 @@ module "autoscaling" {
   cpu_target    = var.autoscaling_cpu_target
   memory_target = var.autoscaling_memory_target
 }
+
+module "github_actions_deploy_role" {
+  source = "./modules/github-actions-deploy-role"
+
+  create                   = var.enable_github_actions_deploy_role
+  name                     = "${local.name}-github-deploy"
+  github_repository        = var.github_repository
+  github_environment       = var.environment
+  github_oidc_provider_arn = coalesce(var.github_oidc_provider_arn, "arn:${data.aws_partition.current.partition}:iam::${data.aws_caller_identity.current.account_id}:oidc-provider/token.actions.githubusercontent.com")
+  ecr_repository_arns      = values(module.ecr.repository_arns)
+  service_arns = compact([
+    module.ecs_service_ui.service_arn,
+    module.ecs_service_catalog.service_arn,
+    module.ecs_service_cart.service_arn,
+    module.ecs_service_checkout.service_arn,
+    var.enable_orders ? module.ecs_service_orders[0].service_arn : null
+  ])
+  task_execution_role_arn = module.iam.task_execution_role_arn
+  task_role_arns          = values(module.iam.task_role_arns)
+  tags                    = local.tags
+}

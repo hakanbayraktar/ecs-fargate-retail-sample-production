@@ -42,6 +42,7 @@ Notes:
 
 - dry run prints the variables that will be written
 - `--apply` requires authenticated `gh`
+- deploy role ARN secret is also synced when available from Terraform outputs
 - backend healthcheck URLs remain manual because they depend on your network reachability model
 
 ## GitHub Actions variables
@@ -73,6 +74,10 @@ Recommended environment variables:
 - `ORDERS_HEALTHCHECK_EXPECTED_SUBSTRING`
 - `SMOKE_RETRIES`
 - `SMOKE_RETRY_DELAY_SECONDS`
+- `MAX_CRITICAL_FINDINGS`
+- `MAX_HIGH_FINDINGS`
+- `IMAGE_SCAN_RETRIES`
+- `IMAGE_SCAN_DELAY_SECONDS`
 
 Required secret per environment:
 
@@ -92,6 +97,8 @@ Behavior:
 - `stage` and `prod` are manual promotion environments
 - `stage` and `prod` promotions require an existing `image_tag`
 - prod promotion should reuse the same immutable image tag already validated in `dev` or `stage`
+- prod deploys require `change_reference`
+- prod deploys require `confirm_production_release=prod-release`
 - environment protection rules should be configured in GitHub for `prod`
 
 Recommended promotion pattern:
@@ -104,6 +111,8 @@ Recommended promotion pattern:
 Release quality controls:
 
 - deploy summaries include resolved ECR image digest
+- Terraform can create a scoped GitHub OIDC deploy role per environment
+- `scripts/check-ecr-scan.sh` enforces vulnerability thresholds before ECS rollout
 - smoke tests retry before failing the rollout
 - backend checks can validate expected response substrings per service
 

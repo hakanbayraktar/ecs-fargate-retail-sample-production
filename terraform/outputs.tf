@@ -54,3 +54,8 @@ output "cart_dynamodb_table_name" {
   description = "Cart DynamoDB table name."
   value       = module.cart_dynamodb.table_name
 }
+
+output "github_actions_deploy_role_arn" {
+  description = "Scoped GitHub Actions OIDC deploy role ARN for the environment."
+  value       = module.github_actions_deploy_role.role_arn
+}

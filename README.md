@@ -125,6 +125,7 @@ Supporting docs:
 │   │   ├── cloudwatch/
 │   │   ├── dynamodb/
 │   │   ├── elasticache/
+│   │   ├── github-actions-deploy-role/
 │   │   ├── rds/
 │   │   ├── remote-state/
 │   │   └── waf/
@@ -150,9 +151,11 @@ Supporting docs:
 │   └── original-app-attribution.md
 ├── scripts/
 │   ├── smoke-test.sh
+│   ├── check-ecr-scan.sh
 │   ├── rollback-service.sh
 │   ├── list-ecs-events.sh
-│   └── cleanup.sh
+│   ├── cleanup.sh
+│   └── sync-github-environment-vars.sh
 └── README.md
 ```
 
@@ -344,6 +347,10 @@ Optional quality-control variables:
 - `ORDERS_HEALTHCHECK_EXPECTED_SUBSTRING`
 - `SMOKE_RETRIES`
 - `SMOKE_RETRY_DELAY_SECONDS`
+- `MAX_CRITICAL_FINDINGS`
+- `MAX_HIGH_FINDINGS`
+- `IMAGE_SCAN_RETRIES`
+- `IMAGE_SCAN_DELAY_SECONDS`
 
 Suggested mapping source:
 
@@ -376,6 +383,13 @@ Deployment behavior follows the Medium article:
 
 This repository intentionally does not default to blue/green or canary. The baseline approach is ECS rolling deployment with health checks and rollback.
 
+Additional release controls:
+
+- scoped GitHub OIDC deploy role per environment
+- image vulnerability gate before ECS rollout
+- explicit prod confirmation and change reference input
+- immutable promotion by image tag and digest
+
 ## AWS OIDC setup
 
 Minimum GitHub-to-AWS trust flow:
@@ -404,19 +418,24 @@ The role should allow:
 7. Capture Terraform outputs.
 8. Create GitHub Environments named `dev`, `stage`, and `prod`.
 9. Add `AWS_DEPLOY_ROLE_ARN` secret and the listed variables to each environment.
-10. Run `terraform-plan.yml` for the target environment.
-11. Push to `main` for automatic `dev` UI deployment, or run `deploy-ui.yml` manually for `stage` or `prod`.
-12. Run `deploy-services.yml` for `catalog`, `cart`, `checkout`, and optionally `orders` in the selected environment.
-13. Confirm the ALB URL and run smoke validation.
+10. Run `scripts/sync-github-environment-vars.sh <env> --apply`.
+11. Run `terraform-plan.yml` for the target environment.
+12. Push to `main` for automatic `dev` UI deployment, or run `deploy-ui.yml` manually for `stage` or `prod`.
+13. For `prod`, provide `change_reference` and `confirm_production_release=prod-release`.
+14. Promote only previously validated `image_tag` values.
+15. Run `deploy-services.yml` for `catalog`, `cart`, `checkout`, and optionally `orders` in the selected environment.
+16. Confirm the ALB URL and run smoke validation.
 
 ## Smoke test and operations
 
 Available helper script:
 
 - [scripts/smoke-test.sh](/Users/hakan/ecs-retail/scripts/smoke-test.sh:1)
+- [scripts/check-ecr-scan.sh](/Users/hakan/ecs-retail/scripts/check-ecr-scan.sh:1)
 - [scripts/list-ecs-events.sh](/Users/hakan/ecs-retail/scripts/list-ecs-events.sh:1)
 - [scripts/rollback-service.sh](/Users/hakan/ecs-retail/scripts/rollback-service.sh:1)
 - [scripts/cleanup.sh](/Users/hakan/ecs-retail/scripts/cleanup.sh:1)
+- [scripts/sync-github-environment-vars.sh](/Users/hakan/ecs-retail/scripts/sync-github-environment-vars.sh:1)
 
 Current smoke test expectation:
 
@@ -424,6 +443,7 @@ Current smoke test expectation:
 - retries before failing
 - can optionally verify backend healthcheck URLs when provided
 - can optionally validate expected response substrings per endpoint
+- release workflows also gate on ECR image scan findings
 
 Operational docs:
 
@@ -454,7 +474,6 @@ Current security baseline:
 
 Remaining hardening candidates:
 
-- stricter IAM resource scoping for deploy role
 - HTTPS enforcement with ACM in every public environment
 - WAF enablement by default in prod
 - GuardDuty / Security Hub / Inspector integration

@@ -1,3 +1,7 @@
+data "aws_caller_identity" "current" {}
+
+data "aws_partition" "current" {}
+
 data "aws_availability_zones" "available" {
   state = "available"
 }
@@ -34,4 +38,3 @@ locals {
 
   service_images = merge(local.default_images, var.container_image_overrides)
 }
-

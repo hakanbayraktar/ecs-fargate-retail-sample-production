@@ -15,6 +15,14 @@ on:
         description: Existing ECR image tag to promote. Required for stage and prod.
         required: false
         type: string
+      change_reference:
+        description: Change ticket, release ID, or approval reference. Required for prod.
+        required: false
+        type: string
+      confirm_production_release:
+        description: Type prod-release to allow a prod deployment.
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -54,6 +62,10 @@ jobs:
       ORDERS_HEALTHCHECK_EXPECTED_SUBSTRING: ${{ vars.ORDERS_HEALTHCHECK_EXPECTED_SUBSTRING }}
       SMOKE_RETRIES: ${{ vars.SMOKE_RETRIES }}
       SMOKE_RETRY_DELAY_SECONDS: ${{ vars.SMOKE_RETRY_DELAY_SECONDS }}
+      MAX_CRITICAL_FINDINGS: ${{ vars.MAX_CRITICAL_FINDINGS }}
+      MAX_HIGH_FINDINGS: ${{ vars.MAX_HIGH_FINDINGS }}
+      IMAGE_SCAN_RETRIES: ${{ vars.IMAGE_SCAN_RETRIES }}
+      IMAGE_SCAN_DELAY_SECONDS: ${{ vars.IMAGE_SCAN_DELAY_SECONDS }}
     steps:
       - uses: actions/checkout@v4
 
@@ -61,12 +73,27 @@ jobs:
         run: |
           deploy_environment="${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'dev' }}"
           image_tag_input="${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || '' }}"
+          change_reference="${{ github.event_name == 'workflow_dispatch' && inputs.change_reference || '' }}"
+          prod_confirmation="${{ github.event_name == 'workflow_dispatch' && inputs.confirm_production_release || '' }}"
 
           echo "DEPLOY_ENVIRONMENT=$deploy_environment" >> "$GITHUB_ENV"
+          echo "CHANGE_REFERENCE=$change_reference" >> "$GITHUB_ENV"
 
           if [[ "$deploy_environment" != "dev" && -z "$image_tag_input" ]]; then
             echo "image_tag is required for stage and prod promotions"
             exit 1
+          fi
+
+          if [[ "$deploy_environment" == "prod" ]]; then
+            if [[ "$prod_confirmation" != "prod-release" ]]; then
+              echo "confirm_production_release must equal prod-release for prod deploys"
+              exit 1
+            fi
+
+            if [[ -z "$change_reference" ]]; then
+              echo "change_reference is required for prod deploys"
+              exit 1
+            fi
           fi
 
           if [[ -n "$image_tag_input" ]]; then
@@ -93,6 +120,20 @@ jobs:
               exit 1
             fi
           done
+
+      - name: Enforce vulnerability policy
+        run: |
+          if [[ -z "${MAX_CRITICAL_FINDINGS:-}" ]]; then
+            echo "MAX_CRITICAL_FINDINGS=0" >> "$GITHUB_ENV"
+          fi
+
+          if [[ -z "${MAX_HIGH_FINDINGS:-}" ]]; then
+            if [[ "${DEPLOY_ENVIRONMENT}" == "prod" ]]; then
+              echo "MAX_HIGH_FINDINGS=0" >> "$GITHUB_ENV"
+            else
+              echo "MAX_HIGH_FINDINGS=5" >> "$GITHUB_ENV"
+            fi
+          fi
 
       - name: Validate zero-downtime ECS settings
         run: |
@@ -143,6 +184,10 @@ jobs:
           test -n "$image_digest"
           test "$image_digest" != "None"
           echo "IMAGE_DIGEST=$image_digest" >> "$GITHUB_ENV"
+
+      - name: Enforce image scan gate
+        run: |
+          bash scripts/check-ecr-scan.sh "$ECR_REPOSITORY" "$IMAGE_TAG"
 
       - name: Fetch current task definition
         run: |
@@ -200,6 +245,8 @@ jobs:
             echo "- Image: ${IMAGE_URI}"
             echo "- Image digest: ${IMAGE_DIGEST}"
             echo "- Build performed: ${BUILD_IMAGE}"
+            echo "- Change reference: ${CHANGE_REFERENCE:-not-required}"
+            echo "- Vulnerability policy: critical<=${MAX_CRITICAL_FINDINGS} high<=${MAX_HIGH_FINDINGS}"
             echo "- Smoke URL: ${SMOKE_TEST_URL}"
           } >> "$GITHUB_STEP_SUMMARY"
 
