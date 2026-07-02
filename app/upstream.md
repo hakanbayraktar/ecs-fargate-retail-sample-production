@@ -24,4 +24,3 @@ The goal of this project is to productionize deployment on ECS Fargate. Keeping 
 - record the selected services and their Docker build contexts
 - validate health endpoints before production rollout
 - preserve the upstream license and attribution
-

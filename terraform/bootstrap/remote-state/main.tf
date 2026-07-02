@@ -4,4 +4,3 @@ module "remote_state" {
   bucket_name = var.bucket_name
   tags        = var.tags
 }
-

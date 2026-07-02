@@ -45,4 +45,3 @@ services:
       dockerfile: Dockerfile.orders
     environment:
       APP_ENV: local
-

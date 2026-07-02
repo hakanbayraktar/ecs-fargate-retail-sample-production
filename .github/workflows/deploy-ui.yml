@@ -22,6 +22,10 @@ env:
   CONTAINER_NAME: ui
   BUILD_CONTEXT: app/upstream/retail-store-sample-app/src/ui
   SMOKE_TEST_URL: ${{ vars.SMOKE_TEST_URL }}
+  CATALOG_HEALTHCHECK_URL: ${{ vars.CATALOG_HEALTHCHECK_URL }}
+  CART_HEALTHCHECK_URL: ${{ vars.CART_HEALTHCHECK_URL }}
+  CHECKOUT_HEALTHCHECK_URL: ${{ vars.CHECKOUT_HEALTHCHECK_URL }}
+  ORDERS_HEALTHCHECK_URL: ${{ vars.ORDERS_HEALTHCHECK_URL }}
 
 jobs:
   deploy:
@@ -110,7 +114,7 @@ jobs:
         run: aws ecs wait services-stable --cluster "$ECS_CLUSTER_NAME" --services "$ECS_SERVICE_NAME"
 
       - name: Run smoke test
-        run: bash scripts/smoke-test.sh "$SMOKE_TEST_URL"
+        run: bash scripts/smoke-test.sh "$SMOKE_TEST_URL" ui-backends
 
       - name: Roll back to previous task definition on smoke failure
         if: failure()
@@ -121,4 +125,3 @@ jobs:
               --service "$ECS_SERVICE_NAME" \
               --task-definition "$PREVIOUS_TASK_DEFINITION"
           fi
-

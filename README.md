@@ -37,8 +37,13 @@ Selected services used by this repo:
 
 Sprint 1 is the foundation sprint for making the repository deployable and understandable.
 
-- scope document: [docs/sprint-1.md](/Users/hakan/ecs-retail/docs/sprint-1.md:1)
-- output: shared Terraform root, environment tfvars, remote backend bootstrap, zero-downtime deploy workflows, operator-focused README
+Sprint 1 output:
+
+- shared Terraform root
+- `dev`, `stage`, and `prod` environment tfvars
+- remote backend bootstrap
+- zero-downtime deploy workflows
+- operator-focused README
 
 Sprint 1 goals:
 
@@ -119,22 +124,54 @@ Supporting docs:
 ```text
 .
 ├── app/
-│   ├── docker-compose.local.yml
-│   ├── README.md
+│   ├── upstream/
 │   ├── upstream.md
-│   └── upstream/retail-store-sample-app/
-├── docs/
-├── scripts/
+│   └── docker-compose.local.yml
 ├── terraform/
-│   ├── backend.tf
-│   ├── bootstrap/remote-state/
-│   ├── envs/dev/
-│   ├── envs/prod/
-│   ├── main.tf
-│   ├── variables.tf
-│   ├── outputs.tf
-│   └── modules/
-└── .github/workflows/
+│   ├── bootstrap/
+│   │   └── remote-state/
+│   ├── modules/
+│   │   ├── vpc/
+│   │   ├── security-groups/
+│   │   ├── ecr/
+│   │   ├── iam/
+│   │   ├── alb/
+│   │   ├── ecs-cluster/
+│   │   ├── ecs-service/
+│   │   ├── service-discovery/
+│   │   ├── secrets/
+│   │   ├── autoscaling/
+│   │   ├── cloudwatch/
+│   │   ├── dynamodb/
+│   │   ├── elasticache/
+│   │   ├── rds/
+│   │   ├── remote-state/
+│   │   └── waf/
+│   └── envs/
+│       ├── dev/
+│       ├── stage/
+│       └── prod/
+├── .github/
+│   └── workflows/
+│       ├── ci.yml
+│       ├── terraform-plan.yml
+│       ├── deploy-ui.yml
+│       └── deploy-services.yml
+├── docs/
+│   ├── architecture.md
+│   ├── application.md
+│   ├── deployment.md
+│   ├── security.md
+│   ├── cost-optimization.md
+│   ├── troubleshooting.md
+│   ├── runbook.md
+│   └── original-app-attribution.md
+├── scripts/
+│   ├── smoke-test.sh
+│   ├── rollback-service.sh
+│   ├── list-ecs-events.sh
+│   └── cleanup.sh
+└── README.md
 ```
 
 ## Prerequisites
@@ -179,7 +216,9 @@ Shared root:
 Environment split:
 
 - `terraform/envs/dev/dev.tfvars`
+- `terraform/envs/stage/stage.tfvars`
 - `terraform/envs/dev/backend.hcl`
+- `terraform/envs/stage/backend.hcl`
 - `terraform/envs/prod/prod.tfvars`
 - `terraform/envs/prod/backend.hcl`
 
@@ -301,6 +340,10 @@ Recommended GitHub repository variables:
 | `ECR_CHECKOUT_REPOSITORY` | ECR repository URL for checkout |
 | `ECR_ORDERS_REPOSITORY` | ECR repository URL for orders |
 | `SMOKE_TEST_URL` | Public URL used by smoke test after UI deployment |
+| `CATALOG_HEALTHCHECK_URL` | Internal or reachable healthcheck URL for catalog deploy verification |
+| `CART_HEALTHCHECK_URL` | Internal or reachable healthcheck URL for cart deploy verification |
+| `CHECKOUT_HEALTHCHECK_URL` | Internal or reachable healthcheck URL for checkout deploy verification |
+| `ORDERS_HEALTHCHECK_URL` | Internal or reachable healthcheck URL for orders deploy verification |
 
 Suggested mapping source:
 
@@ -309,17 +352,6 @@ Suggested mapping source:
 - task definition families: `terraform output ecs_task_definition_families`
 - ECR repository URLs: `terraform output ecr_repository_urls`
 - ALB URL: `terraform output application_url`
-
-Helper script:
-
-- [scripts/sync-github-variables.sh](/Users/hakan/ecs-retail/scripts/sync-github-variables.sh:1)
-
-Examples:
-
-```bash
-bash scripts/sync-github-variables.sh dev
-bash scripts/sync-github-variables.sh prod --apply
-```
 
 ## GitHub Actions workflows
 
@@ -372,7 +404,6 @@ The role should allow:
 7. Capture Terraform outputs.
 8. Create GitHub Actions secret `AWS_DEPLOY_ROLE_ARN`.
 9. Create the GitHub repository variables listed above.
-   Tip: `bash scripts/sync-github-variables.sh dev` prints the exact `gh variable set` commands.
 10. Run `deploy-ui.yml`.
 11. Run `deploy-services.yml` for `catalog`, `cart`, `checkout`, and optionally `orders`.
 12. Confirm the ALB URL and run smoke validation.
@@ -385,11 +416,11 @@ Available helper script:
 - [scripts/list-ecs-events.sh](/Users/hakan/ecs-retail/scripts/list-ecs-events.sh:1)
 - [scripts/rollback-service.sh](/Users/hakan/ecs-retail/scripts/rollback-service.sh:1)
 - [scripts/cleanup.sh](/Users/hakan/ecs-retail/scripts/cleanup.sh:1)
-- [scripts/sync-github-variables.sh](/Users/hakan/ecs-retail/scripts/sync-github-variables.sh:1)
 
 Current smoke test expectation:
 
 - verifies the public UI URL is reachable
+- can optionally verify backend healthcheck URLs when provided
 
 Operational docs:
 

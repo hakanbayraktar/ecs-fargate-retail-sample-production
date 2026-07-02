@@ -20,6 +20,10 @@ permissions:
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
+  CATALOG_HEALTHCHECK_URL: ${{ vars.CATALOG_HEALTHCHECK_URL }}
+  CART_HEALTHCHECK_URL: ${{ vars.CART_HEALTHCHECK_URL }}
+  CHECKOUT_HEALTHCHECK_URL: ${{ vars.CHECKOUT_HEALTHCHECK_URL }}
+  ORDERS_HEALTHCHECK_URL: ${{ vars.ORDERS_HEALTHCHECK_URL }}
 
 jobs:
   deploy:
@@ -94,6 +98,16 @@ jobs:
           test "$circuit_enabled" = "true"
           test "$rollback_enabled" = "true"
 
+      - name: Resolve backend healthcheck URL
+        run: |
+          case "${{ inputs.service }}" in
+            catalog) echo "SERVICE_HEALTHCHECK_URL=${CATALOG_HEALTHCHECK_URL}" >> "$GITHUB_ENV" ;;
+            cart) echo "SERVICE_HEALTHCHECK_URL=${CART_HEALTHCHECK_URL}" >> "$GITHUB_ENV" ;;
+            checkout) echo "SERVICE_HEALTHCHECK_URL=${CHECKOUT_HEALTHCHECK_URL}" >> "$GITHUB_ENV" ;;
+            orders) echo "SERVICE_HEALTHCHECK_URL=${ORDERS_HEALTHCHECK_URL}" >> "$GITHUB_ENV" ;;
+            *) exit 1 ;;
+          esac
+
       - name: Build and push image
         env:
           IMAGE_TAG: ${{ github.sha }}
@@ -144,6 +158,10 @@ jobs:
       - name: Wait for service stability
         run: aws ecs wait services-stable --cluster "$ECS_CLUSTER_NAME" --services "$SERVICE_NAME"
 
+      - name: Run backend smoke test
+        if: env.SERVICE_HEALTHCHECK_URL != ''
+        run: curl -fsS "$SERVICE_HEALTHCHECK_URL" >/dev/null
+
       - name: Roll back to previous task definition on failed deployment
         if: failure()
         run: |
@@ -153,4 +171,3 @@ jobs:
               --service "$SERVICE_NAME" \
               --task-definition "$PREVIOUS_TASK_DEFINITION"
           fi
-
