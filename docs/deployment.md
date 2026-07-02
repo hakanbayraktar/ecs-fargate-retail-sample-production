@@ -31,6 +31,19 @@ Create these GitHub Environments first:
 
 Store the same variable names in each environment, but point them to that environment's Terraform outputs.
 
+To reduce manual copy work, use:
+
+```bash
+scripts/sync-github-environment-vars.sh dev
+scripts/sync-github-environment-vars.sh stage --apply
+```
+
+Notes:
+
+- dry run prints the variables that will be written
+- `--apply` requires authenticated `gh`
+- backend healthcheck URLs remain manual because they depend on your network reachability model
+
 ## GitHub Actions variables
 
 Recommended environment variables:

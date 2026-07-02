@@ -1,3 +1,8 @@
+output "aws_region" {
+  description = "AWS region used by the environment."
+  value       = var.aws_region
+}
+
 output "alb_dns_name" {
   description = "Public ALB DNS name."
   value       = module.alb.dns_name
@@ -49,4 +54,3 @@ output "cart_dynamodb_table_name" {
   description = "Cart DynamoDB table name."
   value       = module.cart_dynamodb.table_name
 }
-

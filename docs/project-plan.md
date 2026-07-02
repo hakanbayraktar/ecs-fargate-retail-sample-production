@@ -100,12 +100,12 @@ Environment promotion and release control:
 - environment-scoped deploy variables and secrets
 - safer manual promotion path for `stage` and `prod`
 - environment-aware Terraform planning
+- helper automation for syncing Terraform outputs into GitHub Environment variables
 
 ### Next Phase
 
 Recommended follow-up work:
 
-- automate syncing Terraform outputs into GitHub Environment variables
 - add stronger smoke and synthetic checks per service
 - tighten deploy-role IAM scope further
 - enable mandatory prod approval rules in GitHub Environments

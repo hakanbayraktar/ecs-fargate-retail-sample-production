@@ -3,13 +3,14 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-usage: scripts/cleanup.sh <dev|prod> [--auto-approve]
+usage: scripts/cleanup.sh <dev|stage|prod> [--auto-approve]
 
 Destroys the selected environment using the shared Terraform root and the
 matching backend.hcl and tfvars files.
 
 Examples:
   scripts/cleanup.sh dev
+  scripts/cleanup.sh stage
   scripts/cleanup.sh prod --auto-approve
 EOF
 }
@@ -22,8 +23,8 @@ fi
 environment="$1"
 auto_approve="${2:-}"
 
-if [[ "$environment" != "dev" && "$environment" != "prod" ]]; then
-  echo "environment must be dev or prod"
+if [[ "$environment" != "dev" && "$environment" != "stage" && "$environment" != "prod" ]]; then
+  echo "environment must be dev, stage, or prod"
   exit 1
 fi
 
@@ -59,4 +60,3 @@ if [[ "$auto_approve" == "--auto-approve" ]]; then
 fi
 
 terraform -chdir="$terraform_dir" "${destroy_args[@]}"
-
