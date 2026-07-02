@@ -11,6 +11,10 @@ on:
           - dev
           - stage
           - prod
+      image_tag:
+        description: Existing ECR image tag to promote. Required for stage and prod.
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -46,6 +50,26 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Resolve deployment mode
+        run: |
+          deploy_environment="${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'dev' }}"
+          image_tag_input="${{ github.event_name == 'workflow_dispatch' && inputs.image_tag || '' }}"
+
+          echo "DEPLOY_ENVIRONMENT=$deploy_environment" >> "$GITHUB_ENV"
+
+          if [[ "$deploy_environment" != "dev" && -z "$image_tag_input" ]]; then
+            echo "image_tag is required for stage and prod promotions"
+            exit 1
+          fi
+
+          if [[ -n "$image_tag_input" ]]; then
+            echo "BUILD_IMAGE=false" >> "$GITHUB_ENV"
+            echo "IMAGE_TAG=$image_tag_input" >> "$GITHUB_ENV"
+          else
+            echo "BUILD_IMAGE=true" >> "$GITHUB_ENV"
+            echo "IMAGE_TAG=${{ github.sha }}" >> "$GITHUB_ENV"
+          fi
+
       - name: Configure AWS credentials with OIDC
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -53,6 +77,15 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
 
       - uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Validate required environment variables
+        run: |
+          for name in AWS_REGION ECS_CLUSTER_NAME ECS_SERVICE_NAME ECS_TASK_DEFINITION_FAMILY ECR_REPOSITORY SMOKE_TEST_URL; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "missing required variable: $name"
+              exit 1
+            fi
+          done
 
       - name: Validate zero-downtime ECS settings
         run: |
@@ -77,12 +110,20 @@ jobs:
           test "$rollback_enabled" = "true"
 
       - name: Build and push image
-        env:
-          IMAGE_TAG: ${{ github.sha }}
+        if: env.BUILD_IMAGE == 'true'
         run: |
           docker build -t "$ECR_REPOSITORY:$IMAGE_TAG" "$BUILD_CONTEXT"
           docker push "$ECR_REPOSITORY:$IMAGE_TAG"
-          echo "IMAGE_URI=$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_ENV"
+
+      - name: Validate promoted image exists
+        if: env.BUILD_IMAGE != 'true'
+        run: |
+          aws ecr describe-images \
+            --repository-name "${ECR_REPOSITORY#*/}" \
+            --image-ids imageTag="$IMAGE_TAG" >/dev/null
+
+      - name: Resolve image URI
+        run: echo "IMAGE_URI=$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_ENV"
 
       - name: Fetch current task definition
         run: |
@@ -128,6 +169,19 @@ jobs:
 
       - name: Run smoke test
         run: bash scripts/smoke-test.sh "$SMOKE_TEST_URL" ui-backends
+
+      - name: Write deployment summary
+        if: success()
+        run: |
+          {
+            echo "## UI Deployment"
+            echo
+            echo "- Environment: ${DEPLOY_ENVIRONMENT}"
+            echo "- Service: ${ECS_SERVICE_NAME}"
+            echo "- Image: ${IMAGE_URI}"
+            echo "- Build performed: ${BUILD_IMAGE}"
+            echo "- Smoke URL: ${SMOKE_TEST_URL}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Roll back to previous task definition on smoke failure
         if: failure()

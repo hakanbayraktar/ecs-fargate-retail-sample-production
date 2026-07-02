@@ -83,7 +83,16 @@ Behavior:
 
 - pushes to `main` deploy UI to `dev`
 - `stage` and `prod` are manual promotion environments
+- `stage` and `prod` promotions require an existing `image_tag`
+- prod promotion should reuse the same immutable image tag already validated in `dev` or `stage`
 - environment protection rules should be configured in GitHub for `prod`
+
+Recommended promotion pattern:
+
+1. merge to `main` and let `dev` build and deploy image tag `${github.sha}`
+2. validate the same tag in `dev`
+3. run `deploy-ui.yml` or `deploy-services.yml` for `stage` with that `image_tag`
+4. promote the same `image_tag` to `prod`
 
 ## Zero-downtime deployment model
 

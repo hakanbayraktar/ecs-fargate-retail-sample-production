@@ -5,6 +5,7 @@
 - `dev` is the default continuous delivery environment
 - promote to `stage` with manual `deploy-ui.yml` or `deploy-services.yml` dispatch
 - promote to `prod` only through the `prod` GitHub Environment
+- use an existing `image_tag` for `stage` and `prod` so the same artifact moves forward
 - keep reviewer approval enabled on the `prod` environment
 
 ## Deployment failed

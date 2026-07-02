@@ -73,6 +73,7 @@ Platform scope:
   - rollback to previous task definition
 - backend deploy workflow with the same rollout safety model
 - GitHub Environments based promotion model for `dev`, `stage`, and `prod`
+- immutable image-tag promotion flow for `stage` and `prod`
 
 ### Operations and Documentation
 
@@ -81,6 +82,12 @@ Platform scope:
 - added helper scripts for smoke test, rollback, ECS event inspection, and cleanup
 
 ## Delivery Phases
+
+Current delivery status:
+
+- Phase 1 complete
+- Phase 2 complete
+- Next phase items identified
 
 ### Phase 1
 
@@ -101,6 +108,7 @@ Environment promotion and release control:
 - safer manual promotion path for `stage` and `prod`
 - environment-aware Terraform planning
 - helper automation for syncing Terraform outputs into GitHub Environment variables
+- immutable promotion of previously built ECR image tags
 
 ### Next Phase
 

@@ -11,6 +11,10 @@ on:
           - dev
           - stage
           - prod
+      image_tag:
+        description: Existing ECR image tag to promote. Required for stage and prod.
+        required: false
+        type: string
       service:
         description: Service to deploy
         required: true
@@ -42,6 +46,23 @@ jobs:
       ORDERS_HEALTHCHECK_URL: ${{ vars.ORDERS_HEALTHCHECK_URL }}
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve deployment mode
+        run: |
+          image_tag_input="${{ inputs.image_tag }}"
+
+          if [[ "${{ inputs.environment }}" != "dev" && -z "$image_tag_input" ]]; then
+            echo "image_tag is required for stage and prod promotions"
+            exit 1
+          fi
+
+          if [[ -n "$image_tag_input" ]]; then
+            echo "BUILD_IMAGE=false" >> "$GITHUB_ENV"
+            echo "IMAGE_TAG=$image_tag_input" >> "$GITHUB_ENV"
+          else
+            echo "BUILD_IMAGE=true" >> "$GITHUB_ENV"
+            echo "IMAGE_TAG=${{ github.sha }}" >> "$GITHUB_ENV"
+          fi
 
       - name: Resolve service metadata
         run: |
@@ -88,6 +109,15 @@ jobs:
 
       - uses: aws-actions/amazon-ecr-login@v2
 
+      - name: Validate required environment variables
+        run: |
+          for name in AWS_REGION ECS_CLUSTER_NAME SERVICE_NAME TASK_DEFINITION_FAMILY ECR_REPOSITORY; do
+            if [[ -z "${!name:-}" ]]; then
+              echo "missing required variable: $name"
+              exit 1
+            fi
+          done
+
       - name: Validate zero-downtime ECS settings
         run: |
           aws ecs describe-services \
@@ -121,12 +151,20 @@ jobs:
           esac
 
       - name: Build and push image
-        env:
-          IMAGE_TAG: ${{ github.sha }}
+        if: env.BUILD_IMAGE == 'true'
         run: |
           docker build -t "$ECR_REPOSITORY:$IMAGE_TAG" "$BUILD_CONTEXT"
           docker push "$ECR_REPOSITORY:$IMAGE_TAG"
-          echo "IMAGE_URI=$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_ENV"
+
+      - name: Validate promoted image exists
+        if: env.BUILD_IMAGE != 'true'
+        run: |
+          aws ecr describe-images \
+            --repository-name "${ECR_REPOSITORY#*/}" \
+            --image-ids imageTag="$IMAGE_TAG" >/dev/null
+
+      - name: Resolve image URI
+        run: echo "IMAGE_URI=$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_ENV"
 
       - name: Fetch current task definition
         run: |
@@ -173,6 +211,19 @@ jobs:
       - name: Run backend smoke test
         if: env.SERVICE_HEALTHCHECK_URL != ''
         run: curl -fsS "$SERVICE_HEALTHCHECK_URL" >/dev/null
+
+      - name: Write deployment summary
+        if: success()
+        run: |
+          {
+            echo "## Service Deployment"
+            echo
+            echo "- Environment: ${{ inputs.environment }}"
+            echo "- Service: ${SERVICE_NAME}"
+            echo "- Image: ${IMAGE_URI}"
+            echo "- Build performed: ${BUILD_IMAGE}"
+            echo "- Healthcheck URL: ${SERVICE_HEALTHCHECK_URL:-not-set}"
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Roll back to previous task definition on failed deployment
         if: failure()
