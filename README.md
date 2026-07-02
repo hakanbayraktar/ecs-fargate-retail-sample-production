@@ -1,45 +1,93 @@
 # ecs-fargate-retail-sample-production
 
-Production-oriented AWS ECS Fargate reference repository for the AWS Containers Retail Sample App. This repository does not rewrite the upstream application; it defines the infrastructure, delivery workflows, runbooks, and guardrails required to deploy a selected subset of services on ECS Fargate with cost-conscious defaults.
+Production-ready ECS Fargate wrapper repository for the AWS Containers Retail Sample App. This repository uses the upstream application as the workload source and adds the infrastructure, CI/CD, security, rollout, and operational controls needed for a production-oriented deployment flow.
 
-> This project creates AWS resources that may incur cost. Use the MVP mode first and destroy resources after testing.
+> This project creates AWS resources that incur cost. Start with `dev`, keep optional dependencies disabled until needed, and destroy non-prod environments after testing.
 
-## Why this project exists
+## Project goal
 
-The upstream retail sample is useful for learning microservices, but it is intentionally broad. This repository narrows the scope to a practical ECS Fargate deployment pattern with:
+This repository is built to match the Medium article's deployment story:
 
-- reproducible Terraform environments
-- service-per-task ECS deployment units
+- upstream retail sample application
+- ECS Fargate services in private subnets
 - public ALB for the UI only
-- internal-only backend services
+- Terraform-managed infrastructure
 - GitHub Actions with AWS OIDC
-- security and cost-aware defaults
-- troubleshooting and operational runbooks
+- immutable image tags
+- rolling deployment with deployment circuit breaker and rollback
+- production-minded security and cost controls
 
-## Upstream attribution
+## Upstream application
 
-The application reference is the AWS Containers Retail Sample App:
+Application source of truth:
 
-- Upstream project: <https://github.com/aws-containers/retail-store-sample-app>
-- Attribution details: [docs/original-app-attribution.md](/Users/hakan/ecs-retail/docs/original-app-attribution.md:1)
+- Upstream repository: <https://github.com/aws-containers/retail-store-sample-app>
 - Local integration notes: [app/upstream.md](/Users/hakan/ecs-retail/app/upstream.md:1)
+- Attribution: [docs/original-app-attribution.md](/Users/hakan/ecs-retail/docs/original-app-attribution.md:1)
 
-This repository keeps the application layer separate and focuses on productionizing deployment on AWS.
+Selected services used by this repo:
 
-## Architecture summary
+- `ui`
+- `catalog`
+- `cart`
+- `checkout`
+- `orders` in full mode
 
-- Public traffic enters through an internet-facing Application Load Balancer.
-- Only the `ui` service is attached to the public ALB.
-- ECS tasks run on Fargate in private subnets without public IP addresses.
-- Internal services communicate over private networking and optional Cloud Map service discovery.
-- Container images are published to Amazon ECR with immutable Git SHA tags.
-- Logs are centralized in CloudWatch Logs with short retention in dev and longer retention in higher environments.
+## Sprint 1
 
-Architecture notes and a diagram placeholder live in [docs/architecture.md](/Users/hakan/ecs-retail/docs/architecture.md:1).
+Sprint 1 is the foundation sprint for making the repository deployable and understandable.
 
-## MVP mode vs full mode
+- scope document: [docs/sprint-1.md](/Users/hakan/ecs-retail/docs/sprint-1.md:1)
+- output: shared Terraform root, environment tfvars, remote backend bootstrap, zero-downtime deploy workflows, operator-focused README
 
-`MVP mode` is the default:
+Sprint 1 goals:
+
+- shared Terraform code for `dev` and `prod`
+- environment split with `tfvars` and `backend.hcl`
+- S3 remote backend with native Terraform lockfile support
+- ECS rolling deployment workflow with rollback guardrails
+- documented GitHub variables, secrets, and setup flow
+
+## Architecture
+
+High-level request flow:
+
+```text
+Internet User
+  -> Route53 / CloudFront (optional)
+  -> Public Application Load Balancer
+  -> ECS Fargate UI Service
+  -> Private backend services
+     -> catalog
+     -> cart
+     -> checkout
+     -> orders (optional)
+  -> Data services
+     -> DynamoDB
+     -> ElastiCache Redis (optional)
+     -> RDS MariaDB / PostgreSQL (optional)
+```
+
+Core security and networking decisions:
+
+- ALB lives in public subnets
+- ECS tasks run in private subnets
+- ECS tasks do not receive public IPs
+- backend services are not publicly exposed
+- security groups restrict inbound traffic to ALB-to-UI and private east-west traffic only
+- task execution role and task role are separate
+- secrets are consumed from Secrets Manager references, not hardcoded into images
+
+Supporting docs:
+
+- architecture: [docs/architecture.md](/Users/hakan/ecs-retail/docs/architecture.md:1)
+- security: [docs/security.md](/Users/hakan/ecs-retail/docs/security.md:1)
+- troubleshooting: [docs/troubleshooting.md](/Users/hakan/ecs-retail/docs/troubleshooting.md:1)
+- runbook: [docs/runbook.md](/Users/hakan/ecs-retail/docs/runbook.md:1)
+
+## Application modes
+
+`dev / MVP mode`:
 
 - `ui`
 - `catalog`
@@ -47,196 +95,351 @@ Architecture notes and a diagram placeholder live in [docs/architecture.md](/Use
 - `checkout`
 - DynamoDB enabled
 - RDS disabled
-- ElastiCache disabled
-- lower cost defaults
+- Redis disabled
+- single NAT gateway
+- lower log retention
+- lower task sizes and scale limits
 
-`Full mode` extends the stack with:
+`prod / full mode`:
 
+- `ui`
+- `catalog`
+- `cart`
+- `checkout`
 - `orders`
-- optional ElastiCache
-- optional MariaDB / RDS
-- optional service discovery for richer internal routing
-
-Primary toggles:
-
-- `enable_full_stack = false`
-- `enable_rds = false`
-- `enable_elasticache = false`
-- `enable_dynamodb = true`
-- `enable_service_discovery = true`
-- `enable_fargate_spot = false`
+- DynamoDB enabled
+- RDS enabled
+- Redis enabled
+- per-AZ NAT gateways
+- Multi-AZ database options
+- WAF and HTTPS-ready settings
 
 ## Repository layout
 
 ```text
 .
 ├── app/
+│   ├── docker-compose.local.yml
+│   ├── README.md
+│   ├── upstream.md
+│   └── upstream/retail-store-sample-app/
 ├── docs/
 ├── scripts/
 ├── terraform/
+│   ├── backend.tf
+│   ├── bootstrap/remote-state/
+│   ├── envs/dev/
+│   ├── envs/prod/
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   └── modules/
 └── .github/workflows/
 ```
 
 ## Prerequisites
 
-- AWS account with permission to create ECS, ECR, VPC, IAM, ALB, CloudWatch, DynamoDB, and optional RDS/ElastiCache resources
-- Terraform `>= 1.6`
+- AWS account with rights to create VPC, ECS, ECR, ALB, IAM, CloudWatch, DynamoDB, Secrets Manager, and optional RDS/ElastiCache/WAF resources
+- Terraform `>= 1.10`
 - AWS CLI v2
 - Docker
-- GitHub repository admin access for Actions OIDC setup
+- GitHub repository admin rights for Actions OIDC, variables, and secrets
 
-## AWS services used
+## Local application run
 
-- Amazon ECS with AWS Fargate
-- Amazon ECR
-- Application Load Balancer
-- Amazon VPC
-- IAM
-- CloudWatch Logs and Alarms
-- Application Auto Scaling
-- AWS Secrets Manager
-- Amazon DynamoDB
-- Amazon ElastiCache for Redis
-- Amazon RDS for MariaDB
-- AWS Cloud Map
+Run the selected upstream services locally:
 
-## Local run instructions
+```bash
+cd app
+DB_PASSWORD=testing docker compose -f docker-compose.local.yml up --build
+```
 
-This repository keeps the application source separate. To run locally:
+Primary local URL:
 
-1. Clone the upstream app into `app/upstream/retail-store-sample-app`.
-2. Review [app/upstream.md](/Users/hakan/ecs-retail/app/upstream.md:1) for the expected integration model.
-3. Use [app/docker-compose.local.yml](/Users/hakan/ecs-retail/app/docker-compose.local.yml:1) as a local adapter and adjust service build paths to match the pinned upstream commit if needed.
+- UI: `http://localhost:8888`
 
-## Terraform bootstrap
+Useful service directories:
 
-1. Create the remote state bucket from `terraform/bootstrap/remote-state`.
-2. Update `terraform/envs/dev/backend.hcl` or `terraform/envs/prod/backend.hcl` with the real S3 bucket name.
-3. Adjust the matching environment tfvars file.
-4. Initialize and apply from the shared root:
+- `app/upstream/retail-store-sample-app/src/ui`
+- `app/upstream/retail-store-sample-app/src/catalog`
+- `app/upstream/retail-store-sample-app/src/cart`
+- `app/upstream/retail-store-sample-app/src/checkout`
+- `app/upstream/retail-store-sample-app/src/orders`
 
-   ```bash
-   cd terraform
-   terraform init -backend-config=envs/dev/backend.hcl
-   terraform plan -var-file=envs/dev/dev.tfvars
-   terraform apply -var-file=envs/dev/dev.tfvars
-   ```
+## Terraform design
 
-## Deployment steps
+Terraform uses one shared root for all environments.
 
-1. Provision infrastructure with Terraform.
-2. Create the ECR repositories returned in Terraform outputs.
-3. Configure GitHub Actions variables and secrets described in [docs/deployment.md](/Users/hakan/ecs-retail/docs/deployment.md:1).
-4. Trigger `deploy-ui.yml` to publish the UI and update ECS.
-5. Trigger `deploy-services.yml` for backend services individually.
-6. Run the smoke test script against the ALB DNS name.
+Shared root:
 
-## GitHub Actions OIDC setup
+- [terraform/main.tf](/Users/hakan/ecs-retail/terraform/main.tf:1)
+- [terraform/variables.tf](/Users/hakan/ecs-retail/terraform/variables.tf:1)
+- [terraform/outputs.tf](/Users/hakan/ecs-retail/terraform/outputs.tf:1)
 
-The workflows are designed for short-lived AWS credentials through GitHub Actions OIDC, not static keys. Configure:
+Environment split:
 
-- an IAM role trusted by GitHub OIDC
-- repository variables for cluster, service, and ECR identifiers
-- optional environment protection rules for `stage` and `prod`
+- `terraform/envs/dev/dev.tfvars`
+- `terraform/envs/dev/backend.hcl`
+- `terraform/envs/prod/prod.tfvars`
+- `terraform/envs/prod/backend.hcl`
 
-Details: [docs/security.md](/Users/hakan/ecs-retail/docs/security.md:1)
+Remote backend:
 
-## CI/CD workflows
+- backend type: `s3`
+- locking: `use_lockfile = true`
+- DynamoDB lock table: not used
 
-- `ci.yml`: structural checks, upstream image builds, and shared-root Terraform fmt/validate
-- `terraform-plan.yml`: shared-root Terraform plan using `dev` or `prod` tfvars
-- `deploy-ui.yml`: build, scan, push, deploy UI, wait for stability, smoke test
-- `deploy-services.yml`: manually deploy a selected backend service
+Bootstrap remote state first:
 
-## Zero-downtime deployment approach
+```bash
+cd terraform/bootstrap/remote-state
+terraform init
+terraform apply \
+  -var='aws_region=eu-central-1' \
+  -var='bucket_name=your-unique-tf-state-bucket'
+```
 
-- ECS rolling deployments
-- deployment circuit breaker with rollback
-- `minimum_healthy_percent` and `maximum_percent` set per service
-- public UI desired count defaults to `2`
-- ALB health checks and deregistration delay
-- smoke tests after deploy
+Plan and apply `dev`:
 
-Operational details: [docs/runbook.md](/Users/hakan/ecs-retail/docs/runbook.md:1)
+```bash
+cd terraform
+terraform init -backend-config=envs/dev/backend.hcl
+terraform plan -var-file=envs/dev/dev.tfvars
+terraform apply -var-file=envs/dev/dev.tfvars
+```
 
-## Security notes
+Plan and apply `prod`:
 
-- no long-lived AWS keys in GitHub
-- separate ECS task execution role and service task roles
-- optional Secrets Manager integration for application configuration
-- immutable image tags based on Git SHA
-- ECR image scanning and lifecycle retention
+```bash
+cd terraform
+terraform init -backend-config=envs/prod/backend.hcl
+terraform plan -var-file=envs/prod/prod.tfvars
+terraform apply -var-file=envs/prod/prod.tfvars
+```
 
-## Cost optimization notes
+Key modules:
 
-- dev defaults keep optional services disabled
-- single NAT gateway by default
-- short log retention in dev
-- Fargate Spot kept optional
-- ECR lifecycle policy retains a limited number of images
+- `vpc`
+- `security-groups`
+- `ecr`
+- `ecs-cluster`
+- `ecs-service`
+- `iam`
+- `alb`
+- `cloudwatch`
+- `autoscaling`
+- `dynamodb`
+- `elasticache`
+- `rds`
+- `service-discovery`
+- `waf`
+- `remote-state`
 
-See [docs/cost-optimization.md](/Users/hakan/ecs-retail/docs/cost-optimization.md:1).
+## Infrastructure created
 
-## Troubleshooting and cleanup
+Base infrastructure:
 
-- Troubleshooting guide: [docs/troubleshooting.md](/Users/hakan/ecs-retail/docs/troubleshooting.md:1)
-- Operations runbook: [docs/runbook.md](/Users/hakan/ecs-retail/docs/runbook.md:1)
-- Cleanup helper: [scripts/cleanup.sh](/Users/hakan/ecs-retail/scripts/cleanup.sh:1)
-
-## Setup before deployment
-
-Configure these items before the first deploy:
-
-- `terraform/envs/<env>/<env>.tfvars`
-- `terraform/envs/<env>/backend.hcl`
-- GitHub repository variables for AWS region, ECS cluster, ECS service names, and ECR repositories
-- GitHub secret `AWS_DEPLOY_ROLE_ARN`
-- optional secret values for application configuration
-- optional ACM certificate ARN for HTTPS
-
-## AWS resources created
-
-The Terraform stack provisions:
-
-- VPC, public subnets, private subnets, route tables, and NAT
-- security groups
+- VPC
+- public and private subnets
+- internet gateway
+- NAT gateway strategy by environment
+- optional VPC endpoints
+- public ALB
 - ECS cluster
-- ECR repositories
-- ALB, listeners, and target groups
-- ECS task definitions and services
-- CloudWatch log groups and alarms
+- one ECS service per application component
+- one task definition family per component
+- service discovery namespace
+- CloudWatch log groups
+- CloudWatch alarms
 - Application Auto Scaling targets and policies
-- optional DynamoDB, ElastiCache, RDS, Cloud Map, and Secrets Manager resources
+- private ECR repositories
 
-## Estimated cost considerations
+Data dependencies:
 
-Primary cost drivers are:
+- DynamoDB table for cart
+- optional ElastiCache Redis for checkout
+- optional RDS MariaDB for catalog
+- optional RDS PostgreSQL for orders
 
-- Fargate task runtime and desired counts
-- NAT gateway hourly and data processing charges
-- ALB hourly and LCU usage
-- CloudWatch log ingestion and retention
-- optional RDS and ElastiCache instances
+Security controls:
 
-Use MVP mode in `dev` first.
+- security groups with minimum ingress
+- IAM execution role
+- IAM task roles
+- Secrets Manager-compatible secret references
+- optional WAF
+
+## GitHub secrets and variables
+
+Configure these before using deploy workflows.
+
+Required GitHub secret:
+
+| Name | Purpose |
+| --- | --- |
+| `AWS_DEPLOY_ROLE_ARN` | IAM role assumed by GitHub Actions through OIDC |
+
+Recommended GitHub repository variables:
+
+| Name | Purpose |
+| --- | --- |
+| `AWS_REGION` | AWS region used by deploy workflows |
+| `ECS_CLUSTER_NAME` | ECS cluster name from Terraform output |
+| `ECS_UI_SERVICE_NAME` | ECS service name for UI |
+| `ECS_CATALOG_SERVICE_NAME` | ECS service name for catalog |
+| `ECS_CART_SERVICE_NAME` | ECS service name for cart |
+| `ECS_CHECKOUT_SERVICE_NAME` | ECS service name for checkout |
+| `ECS_ORDERS_SERVICE_NAME` | ECS service name for orders |
+| `ECS_UI_TASK_DEFINITION_FAMILY` | Current task definition family for UI |
+| `ECS_CATALOG_TASK_DEFINITION_FAMILY` | Current task definition family for catalog |
+| `ECS_CART_TASK_DEFINITION_FAMILY` | Current task definition family for cart |
+| `ECS_CHECKOUT_TASK_DEFINITION_FAMILY` | Current task definition family for checkout |
+| `ECS_ORDERS_TASK_DEFINITION_FAMILY` | Current task definition family for orders |
+| `ECR_UI_REPOSITORY` | ECR repository URL for UI |
+| `ECR_CATALOG_REPOSITORY` | ECR repository URL for catalog |
+| `ECR_CART_REPOSITORY` | ECR repository URL for cart |
+| `ECR_CHECKOUT_REPOSITORY` | ECR repository URL for checkout |
+| `ECR_ORDERS_REPOSITORY` | ECR repository URL for orders |
+| `SMOKE_TEST_URL` | Public URL used by smoke test after UI deployment |
+
+Suggested mapping source:
+
+- ECS cluster name: `terraform output ecs_cluster_name`
+- ECS service names: `terraform output ecs_service_names`
+- task definition families: `terraform output ecs_task_definition_families`
+- ECR repository URLs: `terraform output ecr_repository_urls`
+- ALB URL: `terraform output application_url`
+
+## GitHub Actions workflows
+
+Workflow inventory:
+
+| Workflow | Purpose |
+| --- | --- |
+| `.github/workflows/ci.yml` | Builds selected upstream service images and validates shared-root Terraform |
+| `.github/workflows/terraform-plan.yml` | Runs Terraform fmt, init, validate, and plan for `dev` or `prod` tfvars |
+| `.github/workflows/deploy-ui.yml` | Builds and deploys UI with rolling update, stability wait, smoke test, and rollback guard |
+| `.github/workflows/deploy-services.yml` | Manually deploys one backend service at a time with the same rolling deploy safety model |
+
+Deployment behavior follows the Medium article:
+
+- rolling deployment
+- `desiredCount >= 2`
+- `minimumHealthyPercent >= 100`
+- `maximumPercent >= 200`
+- deployment circuit breaker enabled
+- rollback enabled
+- smoke test after steady state
+
+This repository intentionally does not default to blue/green or canary. The baseline approach is ECS rolling deployment with health checks and rollback.
+
+## AWS OIDC setup
+
+Minimum GitHub-to-AWS trust flow:
+
+1. Create an IAM OIDC identity provider for GitHub.
+2. Create an IAM role for deployments.
+3. Restrict trust policy by repository and branch.
+4. Store the role ARN as `AWS_DEPLOY_ROLE_ARN`.
+
+The role should allow:
+
+- ECR push
+- ECS task definition registration
+- ECS service update
+- IAM pass role for ECS task and execution roles where required
+- read access for deployment metadata lookups
+
+## Step-by-step installation
+
+1. Clone this repository.
+2. Review upstream application notes in `app/upstream.md`.
+3. Bootstrap the Terraform remote state bucket.
+4. Fill `terraform/envs/dev/backend.hcl`.
+5. Review and adjust `terraform/envs/dev/dev.tfvars`.
+6. Run `terraform init`, `plan`, and `apply` from `terraform/`.
+7. Capture Terraform outputs.
+8. Create GitHub Actions secret `AWS_DEPLOY_ROLE_ARN`.
+9. Create the GitHub repository variables listed above.
+10. Run `deploy-ui.yml`.
+11. Run `deploy-services.yml` for `catalog`, `cart`, `checkout`, and optionally `orders`.
+12. Confirm the ALB URL and run smoke validation.
+
+## Smoke test and operations
+
+Available helper script:
+
+- [scripts/smoke-test.sh](/Users/hakan/ecs-retail/scripts/smoke-test.sh:1)
+
+Current smoke test expectation:
+
+- verifies the public UI URL is reachable
+
+Operational docs:
+
+- deployment: [docs/deployment.md](/Users/hakan/ecs-retail/docs/deployment.md:1)
+- runbook: [docs/runbook.md](/Users/hakan/ecs-retail/docs/runbook.md:1)
+- troubleshooting: [docs/troubleshooting.md](/Users/hakan/ecs-retail/docs/troubleshooting.md:1)
+
+## Security posture
+
+Current security baseline:
+
+- private ECS tasks
+- least privilege task role separation
+- no public backend exposure
+- immutable image tags
+- ECR scan on push
+- optional WAF
+- optional VPC endpoints
+- Terraform remote state in private S3 bucket with versioning and encryption
+
+Remaining hardening candidates:
+
+- stricter IAM resource scoping for deploy role
+- HTTPS enforcement with ACM in every public environment
+- WAF enablement by default in prod
+- GuardDuty / Security Hub / Inspector integration
+
+## Cost considerations
+
+`dev` defaults:
+
+- single NAT gateway
+- optional databases and Redis disabled
+- lower CPU/memory values
+- lower scaling ceilings
+- shorter log retention
+
+`prod` defaults:
+
+- per-AZ NAT gateways
+- optional stateful services enabled
+- Multi-AZ data path options
+- higher desired counts and autoscaling ceilings
+- longer retention
+
+Main cost drivers:
+
+- Fargate runtime
+- NAT gateways
+- ALB
+- CloudWatch logs
+- RDS
+- ElastiCache
+
+More detail: [docs/cost-optimization.md](/Users/hakan/ecs-retail/docs/cost-optimization.md:1)
 
 ## Known limitations
 
-- This repository does not vendor the upstream application code.
-- Docker build contexts for application services must be aligned with the pinned upstream checkout.
-- Service-specific health endpoints may need adjustment after selecting the exact upstream commit.
+- upstream application code remains external in design intent even though a local checkout is included for build alignment
+- workflow deploy steps assume GitHub variables are mapped from Terraform outputs manually
+- smoke testing is still minimal and UI-focused
+- service-specific health endpoint tuning may still need refinement against the selected upstream revision
 
-## Next improvements
+## Medium article link
 
-- add service-specific task definition JSON snapshots for workflow-based deployments
-- add environment-specific remote Terraform state backend examples
-- add integration tests against ephemeral preview environments
-- add blue/green deployment option with CodeDeploy for stricter cutovers
+Public repository for the article:
 
-## CV bullet example
+- <https://github.com/hakanbayraktar/ecs-fargate-retail-sample-production>
 
-Built a production-oriented AWS ECS Fargate deployment platform for a multi-service retail sample using Terraform, GitHub Actions OIDC, ECR, ALB, CloudWatch, autoscaling, and operational runbooks.
-
-## Medium article placeholder
-
-Add a project write-up link here after publication.
