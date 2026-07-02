@@ -2,7 +2,8 @@
 
 ## Terraform-first flow
 
-1. Apply infrastructure from `terraform/envs/<env>`.
+1. Bootstrap the remote state S3 bucket from `terraform/bootstrap/remote-state`.
+2. Apply infrastructure from the shared root `terraform/`.
 2. Capture outputs for:
    - ALB DNS name
    - ECS cluster name
@@ -10,6 +11,15 @@
    - ECS service names
 3. Configure GitHub Actions variables and secrets.
 4. Deploy UI first, then deploy backend services.
+
+Example:
+
+```bash
+cd terraform
+terraform init -backend-config=envs/dev/backend.hcl
+terraform plan -var-file=envs/dev/dev.tfvars
+terraform apply -var-file=envs/dev/dev.tfvars
+```
 
 ## GitHub Actions variables
 
@@ -27,11 +37,11 @@ Recommended repository variables:
 - `ECR_CART_REPOSITORY`
 - `ECR_CHECKOUT_REPOSITORY`
 - `ECR_ORDERS_REPOSITORY`
-- `UI_BUILD_CONTEXT`
-- `CATALOG_BUILD_CONTEXT`
-- `CART_BUILD_CONTEXT`
-- `CHECKOUT_BUILD_CONTEXT`
-- `ORDERS_BUILD_CONTEXT`
+- `ECS_UI_TASK_DEFINITION_FAMILY`
+- `ECS_CATALOG_TASK_DEFINITION_FAMILY`
+- `ECS_CART_TASK_DEFINITION_FAMILY`
+- `ECS_CHECKOUT_TASK_DEFINITION_FAMILY`
+- `ECS_ORDERS_TASK_DEFINITION_FAMILY`
 - `SMOKE_TEST_URL`
 
 Required secret:

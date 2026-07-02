@@ -110,20 +110,16 @@ This repository keeps the application source separate. To run locally:
 
 ## Terraform bootstrap
 
-1. Copy the environment example file:
+1. Create the remote state bucket from `terraform/bootstrap/remote-state`.
+2. Update `terraform/envs/dev/backend.hcl` or `terraform/envs/prod/backend.hcl` with the real S3 bucket name.
+3. Adjust the matching environment tfvars file.
+4. Initialize and apply from the shared root:
 
    ```bash
-   cp terraform/envs/dev/terraform.tfvars.example terraform/envs/dev/terraform.tfvars
-   ```
-
-2. Set AWS account specific values such as CIDRs, GitHub repository, OIDC provider ARN, and optional database credentials.
-3. Initialize and apply:
-
-   ```bash
-   cd terraform/envs/dev
-   terraform init
-   terraform plan
-   terraform apply
+   cd terraform
+   terraform init -backend-config=envs/dev/backend.hcl
+   terraform plan -var-file=envs/dev/dev.tfvars
+   terraform apply -var-file=envs/dev/dev.tfvars
    ```
 
 ## Deployment steps
@@ -147,8 +143,8 @@ Details: [docs/security.md](/Users/hakan/ecs-retail/docs/security.md:1)
 
 ## CI/CD workflows
 
-- `ci.yml`: structural checks, Terraform formatting/validation, optional image build hooks, Trivy scan
-- `terraform-plan.yml`: plan-only validation for infrastructure changes
+- `ci.yml`: structural checks, upstream image builds, and shared-root Terraform fmt/validate
+- `terraform-plan.yml`: shared-root Terraform plan using `dev` or `prod` tfvars
 - `deploy-ui.yml`: build, scan, push, deploy UI, wait for stability, smoke test
 - `deploy-services.yml`: manually deploy a selected backend service
 
@@ -191,7 +187,8 @@ See [docs/cost-optimization.md](/Users/hakan/ecs-retail/docs/cost-optimization.m
 
 Configure these items before the first deploy:
 
-- `terraform/envs/<env>/terraform.tfvars`
+- `terraform/envs/<env>/<env>.tfvars`
+- `terraform/envs/<env>/backend.hcl`
 - GitHub repository variables for AWS region, ECS cluster, ECS service names, and ECR repositories
 - GitHub secret `AWS_DEPLOY_ROLE_ARN`
 - optional secret values for application configuration
@@ -243,4 +240,3 @@ Built a production-oriented AWS ECS Fargate deployment platform for a multi-serv
 ## Medium article placeholder
 
 Add a project write-up link here after publication.
-
