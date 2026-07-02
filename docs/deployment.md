@@ -48,6 +48,11 @@ Required secret:
 
 - `AWS_DEPLOY_ROLE_ARN`
 
+Helper script for variables:
+
+- `bash scripts/sync-github-variables.sh dev`
+- `bash scripts/sync-github-variables.sh prod --apply`
+
 ## Deployment sequence
 
 - deploy the `ui` service through `deploy-ui.yml`

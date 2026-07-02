@@ -310,6 +310,17 @@ Suggested mapping source:
 - ECR repository URLs: `terraform output ecr_repository_urls`
 - ALB URL: `terraform output application_url`
 
+Helper script:
+
+- [scripts/sync-github-variables.sh](/Users/hakan/ecs-retail/scripts/sync-github-variables.sh:1)
+
+Examples:
+
+```bash
+bash scripts/sync-github-variables.sh dev
+bash scripts/sync-github-variables.sh prod --apply
+```
+
 ## GitHub Actions workflows
 
 Workflow inventory:
@@ -361,6 +372,7 @@ The role should allow:
 7. Capture Terraform outputs.
 8. Create GitHub Actions secret `AWS_DEPLOY_ROLE_ARN`.
 9. Create the GitHub repository variables listed above.
+   Tip: `bash scripts/sync-github-variables.sh dev` prints the exact `gh variable set` commands.
 10. Run `deploy-ui.yml`.
 11. Run `deploy-services.yml` for `catalog`, `cart`, `checkout`, and optionally `orders`.
 12. Confirm the ALB URL and run smoke validation.
@@ -442,4 +454,3 @@ More detail: [docs/cost-optimization.md](/Users/hakan/ecs-retail/docs/cost-optim
 Public repository for the article:
 
 - <https://github.com/hakanbayraktar/ecs-fargate-retail-sample-production>
-
