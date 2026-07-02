@@ -33,37 +33,6 @@ Selected services used by this repo:
 - `checkout`
 - `orders` in full mode
 
-## Sprint 1
-
-Sprint 1 is the foundation sprint for making the repository deployable and understandable.
-
-Sprint 1 output:
-
-- shared Terraform root
-- `dev`, `stage`, and `prod` environment tfvars
-- remote backend bootstrap
-- zero-downtime deploy workflows
-- operator-focused README
-
-Sprint 1 goals:
-
-- shared Terraform code for `dev` and `prod`
-- environment split with `tfvars` and `backend.hcl`
-- S3 remote backend with native Terraform lockfile support
-- ECS rolling deployment workflow with rollback guardrails
-- documented GitHub variables, secrets, and setup flow
-
-## Sprint 2
-
-Sprint 2 moves the repository from base deployment to controlled environment promotion.
-
-Sprint 2 output:
-
-- GitHub Environments for `dev`, `stage`, and `prod`
-- manual promotion path for `stage` and `prod`
-- environment-scoped variables and secrets for deploy workflows
-- safer Terraform plan execution per target environment
-
 ## Architecture
 
 High-level request flow:
@@ -100,6 +69,7 @@ Supporting docs:
 - security: [docs/security.md](/Users/hakan/ecs-retail/docs/security.md:1)
 - troubleshooting: [docs/troubleshooting.md](/Users/hakan/ecs-retail/docs/troubleshooting.md:1)
 - runbook: [docs/runbook.md](/Users/hakan/ecs-retail/docs/runbook.md:1)
+- project plan: [docs/project-plan.md](/Users/hakan/ecs-retail/docs/project-plan.md:1)
 
 ## Application modes
 
@@ -171,6 +141,7 @@ Supporting docs:
 ├── docs/
 │   ├── architecture.md
 │   ├── application.md
+│   ├── project-plan.md
 │   ├── deployment.md
 │   ├── security.md
 │   ├── cost-optimization.md
