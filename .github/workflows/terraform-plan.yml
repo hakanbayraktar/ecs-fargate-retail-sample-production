@@ -9,17 +9,20 @@ on:
         type: choice
         options:
           - dev
+          - stage
           - prod
   pull_request:
     paths:
       - terraform/**
       - app/upstream/retail-store-sample-app/terraform/**
 
+concurrency:
+  group: terraform-plan-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'pr' }}
+  cancel-in-progress: false
+
 jobs:
-  plan:
+  validate:
     runs-on: ubuntu-latest
-    env:
-      TF_ENV: ${{ inputs.environment != '' && inputs.environment || 'dev' }}
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3
@@ -32,6 +35,28 @@ jobs:
       - name: Terraform validate
         working-directory: terraform
         run: terraform validate
+
+  plan:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+    env:
+      TF_ENV: ${{ inputs.environment }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Configure AWS credentials with OIDC
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+      - name: Terraform init
+        working-directory: terraform
+        run: terraform init -backend=false
       - name: Terraform plan
         working-directory: terraform
         run: terraform plan -var-file="envs/${TF_ENV}/${TF_ENV}.tfvars" -lock=false

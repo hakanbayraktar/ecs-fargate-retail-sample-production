@@ -3,6 +3,14 @@ name: deploy-services
 on:
   workflow_dispatch:
     inputs:
+      environment:
+        description: Environment to deploy
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
       service:
         description: Service to deploy
         required: true
@@ -17,17 +25,21 @@ permissions:
   id-token: write
   contents: read
 
-env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
-  CATALOG_HEALTHCHECK_URL: ${{ vars.CATALOG_HEALTHCHECK_URL }}
-  CART_HEALTHCHECK_URL: ${{ vars.CART_HEALTHCHECK_URL }}
-  CHECKOUT_HEALTHCHECK_URL: ${{ vars.CHECKOUT_HEALTHCHECK_URL }}
-  ORDERS_HEALTHCHECK_URL: ${{ vars.ORDERS_HEALTHCHECK_URL }}
+concurrency:
+  group: deploy-${{ inputs.service }}-${{ inputs.environment }}
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
+      CATALOG_HEALTHCHECK_URL: ${{ vars.CATALOG_HEALTHCHECK_URL }}
+      CART_HEALTHCHECK_URL: ${{ vars.CART_HEALTHCHECK_URL }}
+      CHECKOUT_HEALTHCHECK_URL: ${{ vars.CHECKOUT_HEALTHCHECK_URL }}
+      ORDERS_HEALTHCHECK_URL: ${{ vars.ORDERS_HEALTHCHECK_URL }}
     steps:
       - uses: actions/checkout@v4
 

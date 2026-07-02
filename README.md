@@ -53,6 +53,17 @@ Sprint 1 goals:
 - ECS rolling deployment workflow with rollback guardrails
 - documented GitHub variables, secrets, and setup flow
 
+## Sprint 2
+
+Sprint 2 moves the repository from base deployment to controlled environment promotion.
+
+Sprint 2 output:
+
+- GitHub Environments for `dev`, `stage`, and `prod`
+- manual promotion path for `stage` and `prod`
+- environment-scoped variables and secrets for deploy workflows
+- safer Terraform plan execution per target environment
+
 ## Architecture
 
 High-level request flow:
@@ -312,13 +323,21 @@ Security controls:
 
 Configure these before using deploy workflows.
 
-Required GitHub secret:
+Recommended GitHub Environments:
+
+- `dev`
+- `stage`
+- `prod`
+
+Store the same variable names in each environment, but with environment-specific values.
+
+Required GitHub secret per environment:
 
 | Name | Purpose |
 | --- | --- |
 | `AWS_DEPLOY_ROLE_ARN` | IAM role assumed by GitHub Actions through OIDC |
 
-Recommended GitHub repository variables:
+Recommended GitHub environment variables:
 
 | Name | Purpose |
 | --- | --- |
@@ -360,9 +379,9 @@ Workflow inventory:
 | Workflow | Purpose |
 | --- | --- |
 | `.github/workflows/ci.yml` | Builds selected upstream service images and validates shared-root Terraform |
-| `.github/workflows/terraform-plan.yml` | Runs Terraform fmt, init, validate, and plan for `dev` or `prod` tfvars |
-| `.github/workflows/deploy-ui.yml` | Builds and deploys UI with rolling update, stability wait, smoke test, and rollback guard |
-| `.github/workflows/deploy-services.yml` | Manually deploys one backend service at a time with the same rolling deploy safety model |
+| `.github/workflows/terraform-plan.yml` | Always validates Terraform, and on manual runs creates an environment-specific plan for `dev`, `stage`, or `prod` |
+| `.github/workflows/deploy-ui.yml` | Auto-deploys UI to `dev` on `main`, and manually promotes UI to `stage` or `prod` through GitHub Environments |
+| `.github/workflows/deploy-services.yml` | Manually deploys one backend service at a time to `dev`, `stage`, or `prod` with the same rolling deploy safety model |
 
 Deployment behavior follows the Medium article:
 
@@ -383,7 +402,7 @@ Minimum GitHub-to-AWS trust flow:
 1. Create an IAM OIDC identity provider for GitHub.
 2. Create an IAM role for deployments.
 3. Restrict trust policy by repository and branch.
-4. Store the role ARN as `AWS_DEPLOY_ROLE_ARN`.
+4. Store the role ARN as `AWS_DEPLOY_ROLE_ARN` in each GitHub Environment.
 
 The role should allow:
 
@@ -402,11 +421,12 @@ The role should allow:
 5. Review and adjust `terraform/envs/dev/dev.tfvars`.
 6. Run `terraform init`, `plan`, and `apply` from `terraform/`.
 7. Capture Terraform outputs.
-8. Create GitHub Actions secret `AWS_DEPLOY_ROLE_ARN`.
-9. Create the GitHub repository variables listed above.
-10. Run `deploy-ui.yml`.
-11. Run `deploy-services.yml` for `catalog`, `cart`, `checkout`, and optionally `orders`.
-12. Confirm the ALB URL and run smoke validation.
+8. Create GitHub Environments named `dev`, `stage`, and `prod`.
+9. Add `AWS_DEPLOY_ROLE_ARN` secret and the listed variables to each environment.
+10. Run `terraform-plan.yml` for the target environment.
+11. Push to `main` for automatic `dev` UI deployment, or run `deploy-ui.yml` manually for `stage` or `prod`.
+12. Run `deploy-services.yml` for `catalog`, `cart`, `checkout`, and optionally `orders` in the selected environment.
+13. Confirm the ALB URL and run smoke validation.
 
 ## Smoke test and operations
 
@@ -488,7 +508,7 @@ More detail: [docs/cost-optimization.md](/Users/hakan/ecs-retail/docs/cost-optim
 ## Known limitations
 
 - upstream application code remains external in design intent even though a local checkout is included for build alignment
-- workflow deploy steps assume GitHub variables are mapped from Terraform outputs manually
+- workflow deploy steps still require Terraform outputs to be copied into GitHub Environment variables
 - smoke testing is still minimal and UI-focused
 - service-specific health endpoint tuning may still need refinement against the selected upstream revision
 

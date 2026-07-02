@@ -9,7 +9,7 @@
    - ECS cluster name
    - ECR repository URLs
    - ECS service names
-3. Configure GitHub Actions variables and secrets.
+3. Configure GitHub Environments, variables, and secrets.
 4. Deploy UI first, then deploy backend services.
 
 Example:
@@ -21,9 +21,19 @@ terraform plan -var-file=envs/dev/dev.tfvars
 terraform apply -var-file=envs/dev/dev.tfvars
 ```
 
+## GitHub Environments
+
+Create these GitHub Environments first:
+
+- `dev`
+- `stage`
+- `prod`
+
+Store the same variable names in each environment, but point them to that environment's Terraform outputs.
+
 ## GitHub Actions variables
 
-Recommended repository variables:
+Recommended environment variables:
 
 - `AWS_REGION`
 - `ECS_CLUSTER_NAME`
@@ -44,16 +54,23 @@ Recommended repository variables:
 - `ECS_ORDERS_TASK_DEFINITION_FAMILY`
 - `SMOKE_TEST_URL`
 
-Required secret:
+Required secret per environment:
 
 - `AWS_DEPLOY_ROLE_ARN`
 
 ## Deployment sequence
 
+- run `terraform-plan.yml` manually for `dev`, `stage`, or `prod`
 - deploy the `ui` service through `deploy-ui.yml`
 - deploy backend services individually through `deploy-services.yml`
 - verify ECS steady state
 - run smoke tests against the ALB URL
+
+Behavior:
+
+- pushes to `main` deploy UI to `dev`
+- `stage` and `prod` are manual promotion environments
+- environment protection rules should be configured in GitHub for `prod`
 
 ## Zero-downtime deployment model
 

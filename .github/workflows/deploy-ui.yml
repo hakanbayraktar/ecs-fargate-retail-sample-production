@@ -2,6 +2,15 @@ name: deploy-ui
 
 on:
   workflow_dispatch:
+    inputs:
+      environment:
+        description: Environment to deploy
+        required: true
+        type: choice
+        options:
+          - dev
+          - stage
+          - prod
   push:
     branches:
       - main
@@ -13,23 +22,27 @@ permissions:
   id-token: write
   contents: read
 
-env:
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
-  ECS_SERVICE_NAME: ${{ vars.ECS_UI_SERVICE_NAME }}
-  ECS_TASK_DEFINITION_FAMILY: ${{ vars.ECS_UI_TASK_DEFINITION_FAMILY }}
-  ECR_REPOSITORY: ${{ vars.ECR_UI_REPOSITORY }}
-  CONTAINER_NAME: ui
-  BUILD_CONTEXT: app/upstream/retail-store-sample-app/src/ui
-  SMOKE_TEST_URL: ${{ vars.SMOKE_TEST_URL }}
-  CATALOG_HEALTHCHECK_URL: ${{ vars.CATALOG_HEALTHCHECK_URL }}
-  CART_HEALTHCHECK_URL: ${{ vars.CART_HEALTHCHECK_URL }}
-  CHECKOUT_HEALTHCHECK_URL: ${{ vars.CHECKOUT_HEALTHCHECK_URL }}
-  ORDERS_HEALTHCHECK_URL: ${{ vars.ORDERS_HEALTHCHECK_URL }}
+concurrency:
+  group: deploy-ui-${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'dev' }}
+  cancel-in-progress: false
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'dev' }}
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
+      ECS_SERVICE_NAME: ${{ vars.ECS_UI_SERVICE_NAME }}
+      ECS_TASK_DEFINITION_FAMILY: ${{ vars.ECS_UI_TASK_DEFINITION_FAMILY }}
+      ECR_REPOSITORY: ${{ vars.ECR_UI_REPOSITORY }}
+      CONTAINER_NAME: ui
+      BUILD_CONTEXT: app/upstream/retail-store-sample-app/src/ui
+      SMOKE_TEST_URL: ${{ vars.SMOKE_TEST_URL }}
+      CATALOG_HEALTHCHECK_URL: ${{ vars.CATALOG_HEALTHCHECK_URL }}
+      CART_HEALTHCHECK_URL: ${{ vars.CART_HEALTHCHECK_URL }}
+      CHECKOUT_HEALTHCHECK_URL: ${{ vars.CHECKOUT_HEALTHCHECK_URL }}
+      ORDERS_HEALTHCHECK_URL: ${{ vars.ORDERS_HEALTHCHECK_URL }}
     steps:
       - uses: actions/checkout@v4
 
