@@ -122,10 +122,10 @@
 - Fix: repair routes and confirm private subnet associations.
 - Production note: VPC endpoints can reduce NAT dependency for AWS service traffic.
 
-## Terraform state lock issue
+## Terraform S3 lockfile issue
 
 - Symptom: `terraform apply` fails with a state lock error.
-- Possible causes: stale lock, concurrent pipeline run, interrupted apply.
+- Possible causes: stale S3 lockfile, concurrent pipeline run, interrupted apply, previous Terraform run not closing cleanly.
 - Where to check: backend state system and CI job history.
 - Useful commands: `terraform force-unlock`, backend-specific inspection tooling.
 - Fix: confirm no active run exists before unlocking.
