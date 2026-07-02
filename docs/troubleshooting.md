@@ -7,6 +7,7 @@
 - Where to check: ECS service events, stopped task reason, CloudWatch logs.
 - Useful AWS Console pages: ECS Cluster, CloudWatch Logs, ECR.
 - Useful AWS CLI commands: `aws ecs describe-services`, `aws ecs describe-tasks`, `aws logs tail`.
+- Local helper: `scripts/list-ecs-events.sh <cluster> <service>`.
 - Fix: verify image, env vars, health endpoint, and IAM permissions.
 - Production note: capture the failed task definition revision before redeploy.
 
@@ -44,6 +45,7 @@
 - Possible causes: orders dependency unavailable, Redis missing, bad secret or env.
 - Where to check: checkout logs, dependency health, task events.
 - Useful AWS CLI commands: `aws ecs describe-services`, `aws logs tail`.
+- Local helper: `scripts/list-ecs-events.sh <cluster> <service>`.
 - Fix: verify downstream endpoints and optional data store toggles.
 - Production note: keep `enable_full_stack` and dependency flags aligned.
 
@@ -89,6 +91,7 @@
 - Possible causes: unhealthy revision, insufficient capacity, bad network route, app deadlock.
 - Where to check: ECS service events and CloudWatch metrics.
 - Useful AWS CLI commands: `aws ecs wait services-stable`, `aws ecs describe-services`.
+- Local helper: `scripts/rollback-service.sh <cluster> <service> --wait`.
 - Fix: inspect the new revision, roll back if necessary, then re-run smoke tests.
 - Production note: record the exact task definition revision involved.
 
@@ -136,4 +139,3 @@
 - Useful commands: `gh run view`, `aws sts get-caller-identity`.
 - Fix: correct role trust, verify inputs, and re-run with the same Git SHA.
 - Production note: keep environment variables documented and versioned.
-

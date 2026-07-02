@@ -4,6 +4,7 @@
 
 - freeze further deploys for the affected service
 - inspect the failed workflow and ECS service events
+- use `scripts/list-ecs-events.sh <cluster> <service>` for quick ECS event inspection
 - compare old and new task definition revisions
 - decide between immediate rollback and targeted fix
 
@@ -33,6 +34,7 @@
 - run smoke tests and confirm ALB target health
 - if the failed revision never reaches steady state, rely on ECS deployment circuit breaker first
 - if smoke tests fail after steady state, use the previous task definition captured by the deploy workflow
+- helper: `scripts/rollback-service.sh <cluster> <service> [task-definition-arn] --wait`
 
 ## Secret rotation
 

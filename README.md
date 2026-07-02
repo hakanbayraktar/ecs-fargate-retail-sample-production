@@ -382,6 +382,10 @@ The role should allow:
 Available helper script:
 
 - [scripts/smoke-test.sh](/Users/hakan/ecs-retail/scripts/smoke-test.sh:1)
+- [scripts/list-ecs-events.sh](/Users/hakan/ecs-retail/scripts/list-ecs-events.sh:1)
+- [scripts/rollback-service.sh](/Users/hakan/ecs-retail/scripts/rollback-service.sh:1)
+- [scripts/cleanup.sh](/Users/hakan/ecs-retail/scripts/cleanup.sh:1)
+- [scripts/sync-github-variables.sh](/Users/hakan/ecs-retail/scripts/sync-github-variables.sh:1)
 
 Current smoke test expectation:
 
@@ -392,6 +396,14 @@ Operational docs:
 - deployment: [docs/deployment.md](/Users/hakan/ecs-retail/docs/deployment.md:1)
 - runbook: [docs/runbook.md](/Users/hakan/ecs-retail/docs/runbook.md:1)
 - troubleshooting: [docs/troubleshooting.md](/Users/hakan/ecs-retail/docs/troubleshooting.md:1)
+
+Common operator commands:
+
+```bash
+bash scripts/list-ecs-events.sh <cluster-name> <service-name>
+bash scripts/rollback-service.sh <cluster-name> <service-name> --wait
+bash scripts/cleanup.sh dev
+```
 
 ## Security posture
 
