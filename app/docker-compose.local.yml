@@ -1,0 +1,48 @@
+version: "3.9"
+
+services:
+  ui:
+    build:
+      context: ${RETAIL_SAMPLE_ROOT:-./upstream/retail-store-sample-app}
+      dockerfile: Dockerfile.ui
+    environment:
+      CATALOG_SERVICE_URL: http://catalog:8080
+      CART_SERVICE_URL: http://cart:8080
+      CHECKOUT_SERVICE_URL: http://checkout:8080
+    ports:
+      - "8080:8080"
+    depends_on:
+      - catalog
+      - cart
+      - checkout
+
+  catalog:
+    build:
+      context: ${RETAIL_SAMPLE_ROOT:-./upstream/retail-store-sample-app}
+      dockerfile: Dockerfile.catalog
+    environment:
+      APP_ENV: local
+
+  cart:
+    build:
+      context: ${RETAIL_SAMPLE_ROOT:-./upstream/retail-store-sample-app}
+      dockerfile: Dockerfile.cart
+    environment:
+      APP_ENV: local
+
+  checkout:
+    build:
+      context: ${RETAIL_SAMPLE_ROOT:-./upstream/retail-store-sample-app}
+      dockerfile: Dockerfile.checkout
+    environment:
+      APP_ENV: local
+      ORDERS_SERVICE_URL: http://orders:8080
+
+  orders:
+    profiles: ["full"]
+    build:
+      context: ${RETAIL_SAMPLE_ROOT:-./upstream/retail-store-sample-app}
+      dockerfile: Dockerfile.orders
+    environment:
+      APP_ENV: local
+

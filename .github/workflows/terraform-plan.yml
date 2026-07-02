@@ -1,0 +1,17 @@
+name: terraform-plan
+
+on:
+  pull_request:
+    paths:
+      - terraform/**
+      - app/upstream/retail-store-sample-app/terraform/**
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: hashicorp/setup-terraform@v3
+      - name: Terraform fmt
+        run: terraform fmt -check -recursive
+
