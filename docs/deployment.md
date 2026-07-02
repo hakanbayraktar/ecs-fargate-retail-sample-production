@@ -66,6 +66,13 @@ Recommended environment variables:
 - `ECS_CHECKOUT_TASK_DEFINITION_FAMILY`
 - `ECS_ORDERS_TASK_DEFINITION_FAMILY`
 - `SMOKE_TEST_URL`
+- `UI_EXPECT_SUBSTRING`
+- `CATALOG_HEALTHCHECK_EXPECTED_SUBSTRING`
+- `CART_HEALTHCHECK_EXPECTED_SUBSTRING`
+- `CHECKOUT_HEALTHCHECK_EXPECTED_SUBSTRING`
+- `ORDERS_HEALTHCHECK_EXPECTED_SUBSTRING`
+- `SMOKE_RETRIES`
+- `SMOKE_RETRY_DELAY_SECONDS`
 
 Required secret per environment:
 
@@ -93,6 +100,12 @@ Recommended promotion pattern:
 2. validate the same tag in `dev`
 3. run `deploy-ui.yml` or `deploy-services.yml` for `stage` with that `image_tag`
 4. promote the same `image_tag` to `prod`
+
+Release quality controls:
+
+- deploy summaries include resolved ECR image digest
+- smoke tests retry before failing the rollout
+- backend checks can validate expected response substrings per service
 
 ## Zero-downtime deployment model
 

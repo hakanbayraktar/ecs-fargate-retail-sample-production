@@ -41,9 +41,15 @@ jobs:
       AWS_REGION: ${{ vars.AWS_REGION }}
       ECS_CLUSTER_NAME: ${{ vars.ECS_CLUSTER_NAME }}
       CATALOG_HEALTHCHECK_URL: ${{ vars.CATALOG_HEALTHCHECK_URL }}
+      CATALOG_HEALTHCHECK_EXPECTED_SUBSTRING: ${{ vars.CATALOG_HEALTHCHECK_EXPECTED_SUBSTRING }}
       CART_HEALTHCHECK_URL: ${{ vars.CART_HEALTHCHECK_URL }}
+      CART_HEALTHCHECK_EXPECTED_SUBSTRING: ${{ vars.CART_HEALTHCHECK_EXPECTED_SUBSTRING }}
       CHECKOUT_HEALTHCHECK_URL: ${{ vars.CHECKOUT_HEALTHCHECK_URL }}
+      CHECKOUT_HEALTHCHECK_EXPECTED_SUBSTRING: ${{ vars.CHECKOUT_HEALTHCHECK_EXPECTED_SUBSTRING }}
       ORDERS_HEALTHCHECK_URL: ${{ vars.ORDERS_HEALTHCHECK_URL }}
+      ORDERS_HEALTHCHECK_EXPECTED_SUBSTRING: ${{ vars.ORDERS_HEALTHCHECK_EXPECTED_SUBSTRING }}
+      SMOKE_RETRIES: ${{ vars.SMOKE_RETRIES }}
+      SMOKE_RETRY_DELAY_SECONDS: ${{ vars.SMOKE_RETRY_DELAY_SECONDS }}
     steps:
       - uses: actions/checkout@v4
 
@@ -150,6 +156,16 @@ jobs:
             *) exit 1 ;;
           esac
 
+      - name: Resolve backend healthcheck expectation
+        run: |
+          case "${{ inputs.service }}" in
+            catalog) echo "SERVICE_HEALTHCHECK_EXPECTED_SUBSTRING=${CATALOG_HEALTHCHECK_EXPECTED_SUBSTRING}" >> "$GITHUB_ENV" ;;
+            cart) echo "SERVICE_HEALTHCHECK_EXPECTED_SUBSTRING=${CART_HEALTHCHECK_EXPECTED_SUBSTRING}" >> "$GITHUB_ENV" ;;
+            checkout) echo "SERVICE_HEALTHCHECK_EXPECTED_SUBSTRING=${CHECKOUT_HEALTHCHECK_EXPECTED_SUBSTRING}" >> "$GITHUB_ENV" ;;
+            orders) echo "SERVICE_HEALTHCHECK_EXPECTED_SUBSTRING=${ORDERS_HEALTHCHECK_EXPECTED_SUBSTRING}" >> "$GITHUB_ENV" ;;
+            *) exit 1 ;;
+          esac
+
       - name: Build and push image
         if: env.BUILD_IMAGE == 'true'
         run: |
@@ -165,6 +181,18 @@ jobs:
 
       - name: Resolve image URI
         run: echo "IMAGE_URI=$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_ENV"
+
+      - name: Resolve image digest
+        run: |
+          image_digest="$(aws ecr describe-images \
+            --repository-name "${ECR_REPOSITORY#*/}" \
+            --image-ids imageTag="$IMAGE_TAG" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
+
+          test -n "$image_digest"
+          test "$image_digest" != "None"
+          echo "IMAGE_DIGEST=$image_digest" >> "$GITHUB_ENV"
 
       - name: Fetch current task definition
         run: |
@@ -210,7 +238,40 @@ jobs:
 
       - name: Run backend smoke test
         if: env.SERVICE_HEALTHCHECK_URL != ''
-        run: curl -fsS "$SERVICE_HEALTHCHECK_URL" >/dev/null
+        run: |
+          case "${{ inputs.service }}" in
+            catalog)
+              CATALOG_HEALTHCHECK_URL="$SERVICE_HEALTHCHECK_URL" \
+              CATALOG_HEALTHCHECK_EXPECTED_SUBSTRING="${SERVICE_HEALTHCHECK_EXPECTED_SUBSTRING:-}" \
+              SMOKE_RETRIES="${SMOKE_RETRIES:-}" \
+              SMOKE_RETRY_DELAY_SECONDS="${SMOKE_RETRY_DELAY_SECONDS:-}" \
+              bash scripts/smoke-test.sh "https://example.invalid" backend-only
+              ;;
+            cart)
+              CART_HEALTHCHECK_URL="$SERVICE_HEALTHCHECK_URL" \
+              CART_HEALTHCHECK_EXPECTED_SUBSTRING="${SERVICE_HEALTHCHECK_EXPECTED_SUBSTRING:-}" \
+              SMOKE_RETRIES="${SMOKE_RETRIES:-}" \
+              SMOKE_RETRY_DELAY_SECONDS="${SMOKE_RETRY_DELAY_SECONDS:-}" \
+              bash scripts/smoke-test.sh "https://example.invalid" backend-only
+              ;;
+            checkout)
+              CHECKOUT_HEALTHCHECK_URL="$SERVICE_HEALTHCHECK_URL" \
+              CHECKOUT_HEALTHCHECK_EXPECTED_SUBSTRING="${SERVICE_HEALTHCHECK_EXPECTED_SUBSTRING:-}" \
+              SMOKE_RETRIES="${SMOKE_RETRIES:-}" \
+              SMOKE_RETRY_DELAY_SECONDS="${SMOKE_RETRY_DELAY_SECONDS:-}" \
+              bash scripts/smoke-test.sh "https://example.invalid" backend-only
+              ;;
+            orders)
+              ORDERS_HEALTHCHECK_URL="$SERVICE_HEALTHCHECK_URL" \
+              ORDERS_HEALTHCHECK_EXPECTED_SUBSTRING="${SERVICE_HEALTHCHECK_EXPECTED_SUBSTRING:-}" \
+              SMOKE_RETRIES="${SMOKE_RETRIES:-}" \
+              SMOKE_RETRY_DELAY_SECONDS="${SMOKE_RETRY_DELAY_SECONDS:-}" \
+              bash scripts/smoke-test.sh "https://example.invalid" backend-only
+              ;;
+            *)
+              exit 1
+              ;;
+          esac
 
       - name: Write deployment summary
         if: success()
@@ -221,6 +282,7 @@ jobs:
             echo "- Environment: ${{ inputs.environment }}"
             echo "- Service: ${SERVICE_NAME}"
             echo "- Image: ${IMAGE_URI}"
+            echo "- Image digest: ${IMAGE_DIGEST}"
             echo "- Build performed: ${BUILD_IMAGE}"
             echo "- Healthcheck URL: ${SERVICE_HEALTHCHECK_URL:-not-set}"
           } >> "$GITHUB_STEP_SUMMARY"

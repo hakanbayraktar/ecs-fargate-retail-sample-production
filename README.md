@@ -335,6 +335,16 @@ Recommended GitHub environment variables:
 | `CHECKOUT_HEALTHCHECK_URL` | Internal or reachable healthcheck URL for checkout deploy verification |
 | `ORDERS_HEALTHCHECK_URL` | Internal or reachable healthcheck URL for orders deploy verification |
 
+Optional quality-control variables:
+
+- `UI_EXPECT_SUBSTRING`
+- `CATALOG_HEALTHCHECK_EXPECTED_SUBSTRING`
+- `CART_HEALTHCHECK_EXPECTED_SUBSTRING`
+- `CHECKOUT_HEALTHCHECK_EXPECTED_SUBSTRING`
+- `ORDERS_HEALTHCHECK_EXPECTED_SUBSTRING`
+- `SMOKE_RETRIES`
+- `SMOKE_RETRY_DELAY_SECONDS`
+
 Suggested mapping source:
 
 - ECS cluster name: `terraform output ecs_cluster_name`
@@ -411,7 +421,9 @@ Available helper script:
 Current smoke test expectation:
 
 - verifies the public UI URL is reachable
+- retries before failing
 - can optionally verify backend healthcheck URLs when provided
+- can optionally validate expected response substrings per endpoint
 
 Operational docs:
 

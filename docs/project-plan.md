@@ -80,6 +80,7 @@ Platform scope:
 - expanded README for operator onboarding without turning it into a delivery log
 - added architecture, security, deployment, runbook, troubleshooting, and cost docs
 - added helper scripts for smoke test, rollback, ECS event inspection, and cleanup
+- strengthened smoke tests with retries and response validation controls
 
 ## Delivery Phases
 
@@ -87,6 +88,7 @@ Current delivery status:
 
 - Phase 1 complete
 - Phase 2 complete
+- Phase 3 complete
 - Next phase items identified
 
 ### Phase 1
@@ -114,7 +116,6 @@ Environment promotion and release control:
 
 Recommended follow-up work:
 
-- add stronger smoke and synthetic checks per service
 - tighten deploy-role IAM scope further
 - enable mandatory prod approval rules in GitHub Environments
 - add optional HTTPS and Route53 production cutover guidance

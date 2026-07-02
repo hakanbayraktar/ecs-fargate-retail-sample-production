@@ -43,10 +43,17 @@ jobs:
       CONTAINER_NAME: ui
       BUILD_CONTEXT: app/upstream/retail-store-sample-app/src/ui
       SMOKE_TEST_URL: ${{ vars.SMOKE_TEST_URL }}
+      UI_EXPECT_SUBSTRING: ${{ vars.UI_EXPECT_SUBSTRING }}
       CATALOG_HEALTHCHECK_URL: ${{ vars.CATALOG_HEALTHCHECK_URL }}
+      CATALOG_HEALTHCHECK_EXPECTED_SUBSTRING: ${{ vars.CATALOG_HEALTHCHECK_EXPECTED_SUBSTRING }}
       CART_HEALTHCHECK_URL: ${{ vars.CART_HEALTHCHECK_URL }}
+      CART_HEALTHCHECK_EXPECTED_SUBSTRING: ${{ vars.CART_HEALTHCHECK_EXPECTED_SUBSTRING }}
       CHECKOUT_HEALTHCHECK_URL: ${{ vars.CHECKOUT_HEALTHCHECK_URL }}
+      CHECKOUT_HEALTHCHECK_EXPECTED_SUBSTRING: ${{ vars.CHECKOUT_HEALTHCHECK_EXPECTED_SUBSTRING }}
       ORDERS_HEALTHCHECK_URL: ${{ vars.ORDERS_HEALTHCHECK_URL }}
+      ORDERS_HEALTHCHECK_EXPECTED_SUBSTRING: ${{ vars.ORDERS_HEALTHCHECK_EXPECTED_SUBSTRING }}
+      SMOKE_RETRIES: ${{ vars.SMOKE_RETRIES }}
+      SMOKE_RETRY_DELAY_SECONDS: ${{ vars.SMOKE_RETRY_DELAY_SECONDS }}
     steps:
       - uses: actions/checkout@v4
 
@@ -125,6 +132,18 @@ jobs:
       - name: Resolve image URI
         run: echo "IMAGE_URI=$ECR_REPOSITORY:$IMAGE_TAG" >> "$GITHUB_ENV"
 
+      - name: Resolve image digest
+        run: |
+          image_digest="$(aws ecr describe-images \
+            --repository-name "${ECR_REPOSITORY#*/}" \
+            --image-ids imageTag="$IMAGE_TAG" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
+
+          test -n "$image_digest"
+          test "$image_digest" != "None"
+          echo "IMAGE_DIGEST=$image_digest" >> "$GITHUB_ENV"
+
       - name: Fetch current task definition
         run: |
           aws ecs describe-task-definition \
@@ -179,6 +198,7 @@ jobs:
             echo "- Environment: ${DEPLOY_ENVIRONMENT}"
             echo "- Service: ${ECS_SERVICE_NAME}"
             echo "- Image: ${IMAGE_URI}"
+            echo "- Image digest: ${IMAGE_DIGEST}"
             echo "- Build performed: ${BUILD_IMAGE}"
             echo "- Smoke URL: ${SMOKE_TEST_URL}"
           } >> "$GITHUB_STEP_SUMMARY"
